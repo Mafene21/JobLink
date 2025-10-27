@@ -1,0 +1,371 @@
+/* About Page Specific Styles */
+
+/* Page Header */
+.page-header {
+  padding: 150px 0 80px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--white);
+  text-align: center;
+}
+
+.page-header h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.page-header p {
+  font-size: 1.2rem;
+  max-width: 700px;
+  margin: 0 auto;
+  opacity: 0.9;
+}
+
+/* Mission Section */
+.mission {
+  padding: 100px 0;
+  background-color: var(--white);
+}
+
+.mission-content {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.mission-text {
+  flex: 1;
+}
+
+.mission-text h2 {
+  color: var(--secondary);
+  margin-bottom: 1.5rem;
+  font-size: 2.5rem;
+}
+
+.mission-text p {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.mission-stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 2rem;
+}
+
+.mission-stat {
+  text-align: center;
+}
+
+.mission-stat .stat-number {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.mission-stat .stat-label {
+  font-size: 0.9rem;
+  color: var(--gray);
+  margin-top: 5px;
+}
+
+.mission-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mission-image .image-placeholder {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+}
+
+.mission-image .image-placeholder i {
+  font-size: 8rem;
+  opacity: 0.8;
+}
+
+/* Values Section */
+.values {
+  padding: 100px 0;
+  background-color: var(--light-gray);
+}
+
+.values h2 {
+  text-align: center;
+  color: var(--secondary);
+  margin-bottom: 3rem;
+}
+
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+}
+
+.value-card {
+  background-color: var(--white);
+  padding: 40px 30px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.value-card:hover {
+  transform: translateY(-10px);
+}
+
+.value-icon {
+  width: 80px;
+  height: 80px;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.value-icon i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.value-card h3 {
+  margin-bottom: 15px;
+  color: var(--secondary);
+}
+
+/* Story Section */
+.story {
+  padding: 100px 0;
+  background-color: var(--white);
+}
+
+.story-content {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.story-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.story-image .image-placeholder {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+}
+
+.story-image .image-placeholder i {
+  font-size: 8rem;
+  opacity: 0.8;
+}
+
+.story-text {
+  flex: 1;
+}
+
+.story-text h2 {
+  color: var(--secondary);
+  margin-bottom: 1.5rem;
+  font-size: 2.5rem;
+}
+
+.story-text p {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+/* Team Section */
+.team {
+  padding: 100px 0;
+  background-color: var(--light-gray);
+}
+
+.team h2 {
+  text-align: center;
+  color: var(--secondary);
+  margin-bottom: 1rem;
+}
+
+.team-subtitle {
+  text-align: center;
+  margin-bottom: 3rem;
+  font-size: 1.1rem;
+  color: var(--gray);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+
+.team-member {
+  background-color: var(--white);
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.team-member:hover {
+  transform: translateY(-5px);
+}
+
+.member-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 20px;
+  border: 5px solid var(--light);
+}
+
+.member-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-member h3 {
+  margin-bottom: 5px;
+  color: var(--secondary);
+}
+
+.member-role {
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.member-bio {
+  color: var(--gray);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.member-social {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.member-social a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--light-gray);
+  border-radius: 50%;
+  color: var(--dark);
+  transition: var(--transition);
+}
+
+.member-social a:hover {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+/* CTA Buttons */
+.cta-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .mission-content,
+  .story-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .mission-stats {
+    justify-content: center;
+  }
+  
+  .mission-image,
+  .story-image {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .page-header p {
+    font-size: 1.1rem;
+  }
+  
+  .mission-stats {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .cta-buttons .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-header {
+    padding: 130px 0 60px;
+  }
+  
+  .page-header h1 {
+    font-size: 2rem;
+  }
+  
+  .mission-text h2,
+  .story-text h2 {
+    font-size: 2rem;
+  }
+  
+  .mission-image .image-placeholder,
+  .story-image .image-placeholder {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .mission-image .image-placeholder i,
+  .story-image .image-placeholder i {
+    font-size: 6rem;
+  }
+}
