@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Applicants | JobLink</title>
+  <link rel="stylesheet" href="manage_applicants.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+        <span class="employer-badge">Employer</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="employer_dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="job_posting.html" class="nav-link">Post Job</a></li>
+        <li><a href="manage_jobs.html" class="nav-link">Manage Jobs</a></li>
+        <li><a href="#" class="nav-link active">Applicants</a></li>
+        <li><a href="employer_profile.html" class="nav-link">Company Profile</a></li>
+        <li class="nav-divider"></li>
+        <li>
+          <div class="user-menu">
+            <img src="https://via.placeholder.com/32x32?text=Logo" alt="Company Logo" class="company-logo-nav" id="companyLogoNav">
+            <a href="login.html" class="nav-link logout-btn">Logout</a>
+          </div>
+        </li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="manage-applicants-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>Manage Applicants</h1>
+        <p>Review, filter, and manage job applications from candidates</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" id="exportApplicants">
+          <i class="fas fa-download"></i>
+          Export Data
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-overview">
+      <div class="stat-card">
+        <div class="stat-icon total">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="totalApplicantsCount">0</h3>
+          <p>Total Applicants</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon new">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="newApplicantsCount">0</h3>
+          <p>New Applications</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon reviewed">
+          <i class="fas fa-eye"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="reviewedApplicantsCount">0</h3>
+          <p>Reviewed</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon shortlisted">
+          <i class="fas fa-star"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="shortlistedApplicantsCount">0</h3>
+          <p>Shortlisted</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon rejected">
+          <i class="fas fa-times"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="rejectedApplicantsCount">0</h3>
+          <p>Rejected</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters and Controls -->
+    <div class="filters-section">
+      <div class="filter-group">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="applicantSearch" placeholder="Search applicants by name, email, or skills...">
+        </div>
+        
+        <select id="jobFilter" class="filter-select">
+          <option value="all">All Jobs</option>
+          <!-- Job options will be populated dynamically -->
+        </select>
+
+        <select id="statusFilter" class="filter-select">
+          <option value="all">All Status</option>
+          <option value="new">New</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="shortlisted">Shortlisted</option>
+          <option value="interview">Interview</option>
+          <option value="rejected">Rejected</option>
+          <option value="hired">Hired</option>
+        </select>
+
+        <select id="experienceFilter" class="filter-select">
+          <option value="all">All Experience Levels</option>
+          <option value="entry">Entry Level (0-2 years)</option>
+          <option value="mid">Mid Level (2-5 years)</option>
+          <option value="senior">Senior Level (5+ years)</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-outline" id="clearFilters">
+          <i class="fas fa-times"></i>
+          Clear Filters
+        </button>
+        <button class="btn btn-primary" id="applyFilters">
+          <i class="fas fa-filter"></i>
+          Apply Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content-area">
+      <!-- Applicants List -->
+      <div class="applicants-list-section">
+        <div class="section-header">
+          <h2>Applicants</h2>
+          <div class="section-actions">
+            <button class="btn btn-outline" id="refreshApplicants">
+              <i class="fas fa-sync-alt"></i>
+              Refresh
+            </button>
+            <div class="view-toggle">
+              <button class="view-btn active" data-view="grid">
+                <i class="fas fa-th"></i>
+              </button>
+              <button class="view-btn" data-view="list">
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="applicants-container" id="applicantsContainer">
+          <!-- Applicants will be loaded here dynamically -->
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading applicants...</p>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+          <!-- Pagination will be generated here -->
+        </div>
+      </div>
+
+      <!-- Applicant Details Sidebar -->
+      <div class="applicant-details-sidebar" id="applicantDetailsSidebar">
+        <div class="sidebar-header">
+          <h3>Applicant Details</h3>
+          <button class="close-sidebar" id="closeSidebar">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="sidebar-content" id="sidebarContent">
+          <div class="no-selection">
+            <i class="fas fa-user"></i>
+            <p>Select an applicant to view details</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Status Modal -->
+  <div id="statusModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Update Application Status</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="status-update-form">
+          <div class="applicant-info" id="statusApplicantInfo">
+            <!-- Applicant info will be populated here -->
+          </div>
+          
+          <div class="form-group">
+            <label for="newStatus">New Status</label>
+            <select id="newStatus" class="form-select">
+              <option value="new">New</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="interview">Interview</option>
+              <option value="rejected">Rejected</option>
+              <option value="hired">Hired</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="statusNotes">Notes (Optional)</label>
+            <textarea id="statusNotes" rows="4" placeholder="Add any notes about this applicant..."></textarea>
+          </div>
+
+          <div class="form-group" id="interviewSection" style="display: none;">
+            <label for="interviewDate">Interview Date</label>
+            <input type="datetime-local" id="interviewDate" class="form-input">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelStatusUpdate">Cancel</button>
+        <button class="btn btn-primary" id="saveStatusUpdate">
+          <i class="fas fa-save"></i>
+          Update Status
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send Message Modal -->
+  <div id="messageModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Send Message to Applicant</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="message-form">
+          <div class="applicant-info" id="messageApplicantInfo">
+            <!-- Applicant info will be populated here -->
+          </div>
+          
+          <div class="form-group">
+            <label for="messageSubject">Subject</label>
+            <input type="text" id="messageSubject" class="form-input" placeholder="Enter message subject...">
+          </div>
+
+          <div class="form-group">
+            <label for="messageContent">Message</label>
+            <textarea id="messageContent" rows="6" placeholder="Type your message to the applicant..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="sendCopy">
+              <span class="checkmark"></span>
+              Send a copy to my email
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelMessage">Cancel</button>
+        <button class="btn btn-primary" id="sendMessage">
+          <i class="fas fa-paper-plane"></i>
+          Send Message
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Actions Modal -->
+  <div id="bulkActionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Bulk Action</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="bulk-action-form">
+          <p>Apply action to <span id="bulkActionCount">0</span> selected applicants:</p>
+          
+          <div class="form-group">
+            <label for="bulkStatus">Update Status To</label>
+            <select id="bulkStatus" class="form-select">
+              <option value="reviewed">Reviewed</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="interview">Interview</option>
+              <option value="rejected">Rejected</option>
+              <option value="hired">Hired</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="bulkMessage">Add Note (Optional)</label>
+            <textarea id="bulkMessage" rows="3" placeholder="Add a note for all selected applicants..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelBulkAction">Cancel</button>
+        <button class="btn btn-primary" id="applyBulkAction">
+          <i class="fas fa-check"></i>
+          Apply to Selected
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="successToast" style="display: none;">
+    <div class="toast-content">
+      <i class="fas fa-check-circle"></i>
+      <span id="toastMessage">Operation completed successfully!</span>
+    </div>
+  </div>
+
+  <script type="module" src="manage_applicants.js"></script>
+</body>
+</html>

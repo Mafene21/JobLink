@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - JobLink</title>
+  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="login.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Firebase SDK v9 -->
+  <script type="module" src="login.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="about.html" class="nav-link">About</a></li>
+        <li><a href="help.html" class="nav-link">Help</a></li>
+        <li><a href="contact.html" class="nav-link">Contact</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#" class="nav-link active">Login</a></li>
+        <li><a href="register.html" class="nav-btn">Sign Up</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Login Section -->
+  <section class="login-section">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="logo">
+            <i class="fas fa-handshake"></i>
+            <span>JobLink</span>
+          </div>
+          <h1>Welcome Back</h1>
+          <p>Sign in to your account to continue</p>
+        </div>
+
+        <form id="loginForm" class="login-form">
+          <div class="success-message" id="successMessage"></div>
+          <div class="error-message" id="formError"></div>
+          
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-with-icon">
+              <i class="fas fa-envelope"></i>
+              <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div class="error-message" id="emailError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-with-icon">
+              <i class="fas fa-lock"></i>
+              <input type="password" id="password" name="password" placeholder="Enter your password" required>
+              <button type="button" class="toggle-password" id="togglePassword">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="error-message" id="passwordError"></div>
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-container">
+              <input type="checkbox" id="rememberMe" name="rememberMe">
+              <span class="checkmark"></span>
+              Remember me
+            </label>
+            <a href="forgot_password.html" class="forgot-password">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-login" id="loginButton">
+            <span class="btn-text">Sign In</span>
+            <div class="btn-loader" id="btnLoader">
+              <div class="loader"></div>
+            </div>
+          </button>
+
+          <div class="login-divider">
+            <span>Or continue with</span>
+          </div>
+
+          <div class="social-login">
+            <button type="button" class="btn-social btn-google">
+              <i class="fab fa-google"></i>
+              Google
+            </button>
+            <button type="button" class="btn-social btn-linkedin">
+              <i class="fab fa-linkedin"></i>
+              LinkedIn
+            </button>
+          </div>
+        </form>
+
+        <div class="login-footer">
+          <p>Don't have an account? <a href="register.html">Sign up here</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section">
+          <div class="logo">
+            <i class="fas fa-handshake"></i>
+            <span>JobLink</span>
+          </div>
+          <p>Connecting talent with opportunity through intelligent matching technology.</p>
+          <div class="social-links">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-linkedin"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+          </div>
+        </div>
+        <div class="footer-section">
+          <h3>For Job Seekers</h3>
+          <ul>
+            <li><a href="browse_jobs.html">Browse Jobs</a></li>
+            <li><a href="seeker_profile_setup.html">Create Profile</a></li>
+            <li><a href="help.html">Career Advice</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>For Employers</h3>
+          <ul>
+            <li><a href="job_posting_setup.html">Post a Job</a></li>
+            <li><a href="employer_profile_setup.html">Create Profile</a></li>
+            <li><a href="pricing.html">Pricing</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Company</h3>
+          <ul>
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="help.html">Help Center</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 JobLink. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

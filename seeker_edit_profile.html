@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Update Profile | JobLink</title>
+  <link rel="stylesheet" href="seeker_edit_profile.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="seeker_dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="browse_jobs.html" class="nav-link">Browse Jobs</a></li>
+        <li><a href="applied_jobs.html" class="nav-link">Applications</a></li>
+        <li><a href="#" class="nav-link active">Profile</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="login.html" class="nav-link">Logout</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Profile Update Section -->
+  <div class="profile-update-container">
+    <!-- Progress Header -->
+    <div class="progress-header">
+      <h1>Update Your Profile</h1>
+      <p>Keep your profile updated to get better job matches</p>
+      
+      <div class="profile-completion">
+        <div class="completion-stats">
+          <div class="stat">
+            <span class="stat-number" id="completionPercent">0%</span>
+            <span class="stat-label">Profile Complete</span>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <!-- Left Side - Quick Navigation -->
+      <aside class="profile-sidebar">
+        <div class="nav-sections">
+          <button class="nav-section active" data-section="personal">
+            <i class="fas fa-user"></i>
+            Personal Info
+          </button>
+          <button class="nav-section" data-section="education">
+            <i class="fas fa-graduation-cap"></i>
+            Education
+          </button>
+          <button class="nav-section" data-section="experience">
+            <i class="fas fa-briefcase"></i>
+            Experience
+          </button>
+          <button class="nav-section" data-section="skills">
+            <i class="fas fa-tools"></i>
+            Skills
+          </button>
+          <button class="nav-section" data-section="referees">
+            <i class="fas fa-user-friends"></i>
+            Referees
+          </button>
+          <button class="nav-section" data-section="preferences">
+            <i class="fas fa-sliders-h"></i>
+            Job Preferences
+          </button>
+        </div>
+
+        <div class="profile-preview">
+          <h4>Profile Preview</h4>
+          <div class="preview-card">
+            <div class="preview-avatar">
+              <img src="" alt="Profile" id="previewAvatar">
+              <div class="avatar-actions">
+                <button class="btn-remove-avatar" id="removeAvatarBtn" title="Remove Profile Picture">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="preview-info">
+              <h5 id="previewName">Your Name</h5>
+              <p id="previewTitle">Your Title</p>
+              <p id="previewLocation">Location</p>
+            </div>
+            <div class="preview-stats">
+              <div class="preview-stat">
+                <span id="previewSkills">0</span>
+                <small>Skills Added</small>
+              </div>
+              <div class="preview-stat">
+                <span id="previewReferees">0</span>
+                <small>Referees</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Side - Form Sections -->
+      <main class="profile-forms">
+        <form id="profileForm">
+          <!-- Personal Information Section -->
+          <div class="form-section active" id="personalSection">
+            <div class="section-header">
+              <h2>Personal Information</h2>
+              <p>Basic details that employers will see</p>
+            </div>
+
+            <div class="form-content">
+              <div class="avatar-upload">
+                <div class="avatar-preview">
+                  <img src="" alt="Profile" id="avatarPreview">
+                  <div class="upload-overlay">
+                    <i class="fas fa-camera"></i>
+                    <span>Change Photo</span>
+                  </div>
+                </div>
+                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                <div class="avatar-actions">
+                  <button type="button" class="btn-remove-picture" id="removePictureBtn">
+                    <i class="fas fa-trash"></i>
+                    Remove Picture
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="fullName">Full Name *</label>
+                  <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="professionalTitle">Professional Title *</label>
+                  <input type="text" id="professionalTitle" name="professionalTitle" placeholder="Title" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="email">Email Address *</label>
+                  <input type="email" id="email" name="email" placeholder="Email" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="phone">Phone Number</label>
+                  <input type="tel" id="phone" name="phone" placeholder="+256 XXX XXX XXX">
+                </div>
+
+                <div class="form-group">
+                  <label for="location">Location *</label>
+                  <input type="text" id="location" name="location" placeholder="City, Country" required>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="professionalSummary">Professional Summary</label>
+                  <textarea id="professionalSummary" name="professionalSummary" rows="4" placeholder="Briefly describe your professional background, skills, and career goals..."></textarea>
+                  <div class="char-count">
+                    <span id="summaryChars">0</span>/500 characters
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Education Section -->
+          <div class="form-section" id="educationSection">
+            <div class="section-header">
+              <h2>Education Background</h2>
+              <p>Your academic qualifications and achievements</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-group">
+                <label for="highestEducation">Highest Education Level *</label>
+                <select id="highestEducation" name="highestEducation" required>
+                  <option value="">Select your highest education</option>
+                  <option value="high_school">High School</option>
+                  <option value="certificate">Certificate</option>
+                  <option value="diploma">Diploma</option>
+                  <option value="associate">Associate Degree</option>
+                  <option value="bachelor">Bachelor's Degree</option>
+                  <option value="master">Master's Degree</option>
+                  <option value="phd">PhD</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="fieldOfStudy">Field of Study</label>
+                <input type="text" id="fieldOfStudy" name="fieldOfStudy" placeholder="">
+              </div>
+
+              <div class="form-group">
+                <label for="institution">Institution (Optional)</label>
+                <input type="text" id="institution" name="institution" placeholder="">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="graduationYear">Graduation Year</label>
+                  <input type="number" id="graduationYear" name="graduationYear" placeholder="YYYY" min="1900" max="2030" disabled>
+                </div>
+
+                <div class="form-group">
+                  <label for="educationCountry">Country</label>
+                  <input type="text" id="educationCountry" name="educationCountry" placeholder="">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="currentlyStudying" name="currentlyStudying">
+                  <span class="checkmark"></span>
+                  Currently studying
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experience Section -->
+          <div class="form-section" id="experienceSection">
+            <div class="section-header">
+              <h2>Work Experience</h2>
+              <p>Your professional work history and achievements</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-group">
+                <label for="totalExperience">Years of Experience *</label>
+                <select id="totalExperience" name="totalExperience" required>
+                  <option value="">Select your experience level</option>
+                  <option value="none">None </option>
+                  <option value="0-1">0-1 years </option>
+                  <option value="1-3">1-3 years </option>
+                  <option value="3-5">3-5 years </option>
+                  <option value="5-10">5-10 years </option>
+                  <option value="10+">10+ years </option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="currentStatus">Current Employment Status *</label>
+                <select id="currentStatus" name="currentStatus" required>
+                  <option value="">Select your status</option>
+                  <option value="employed">Employed</option>
+                  <option value="unemployed">Unemployed</option>
+                  <option value="student">Student</option>
+                  <option value="self-employed">Self-Employed</option>
+                  <option value="freelancer">Freelancer</option>
+                </select>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="workHistory">Work History & Achievements</label>
+                <textarea id="workHistory" name="workHistory" rows="5" placeholder="Describe your previous roles, responsibilities, key achievements, and projects..."></textarea>
+                <div class="help-text">
+                  Mention specific technologies, tools, and methodologies you've worked with
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skills Section -->
+          <div class="form-section" id="skillsSection">
+            <div class="section-header">
+              <h2>Skills & Expertise</h2>
+              <p>Your technical and professional skills</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-group">
+                <label>Add Your Skills *</label>
+                <div class="skills-input-container">
+                  <input type="text" id="skillInput" placeholder="Type a skill and press Enter">
+                  <button type="button" class="btn-add-skill" id="addSkillBtn">Add</button>
+                </div>
+                <div class="help-text">
+                  Add at least 5 skills relevant to your field. These will be used for job matching.
+                </div>
+              </div>
+
+              <div class="skills-display">
+                <h4>Your Skills</h4>
+                <div class="skills-tags" id="skillsTags">
+                  <!-- Skills will be added here dynamically -->
+                </div>
+                <div class="skills-stats">
+                  <span id="skillsCount">0</span> skills added
+                </div>
+              </div>
+
+              <div class="skills-suggestions">
+                <h4>Suggested Skills</h4>
+                <div class="suggested-skills">
+                  <button type="button" class="skill-suggestion" data-skill="JavaScript">JavaScript</button>
+                  <button type="button" class="skill-suggestion" data-skill="Python">Python</button>
+                  <button type="button" class="skill-suggestion" data-skill="React">React</button>
+                  <button type="button" class="skill-suggestion" data-skill="Node.js">Node.js</button>
+                  <button type="button" class="skill-suggestion" data-skill="HTML/CSS">HTML/CSS</button>
+                  <button type="button" class="skill-suggestion" data-skill="SQL">SQL</button>
+                  <button type="button" class="skill-suggestion" data-skill="Project Management">Project Management</button>
+                  <button type="button" class="skill-suggestion" data-skill="Communication">Communication</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Referees Section -->
+          <div class="form-section" id="refereesSection">
+            <div class="section-header">
+              <h2>Referees</h2>
+              <p>Add professional references who can vouch for your work</p>
+            </div>
+
+            <div class="form-content">
+              <div class="referees-intro">
+                <p>Referees will receive an email notification to confirm their reference for you. Please ensure you have their permission before adding them.</p>
+              </div>
+
+              <div class="referee-form">
+                <h4>Add New Referee</h4>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="refereeName">Full Name *</label>
+                    <input type="text" id="refereeName" placeholder="Referee's full name">
+                  </div>
+                  <div class="form-group">
+                    <label for="refereeEmail">Email Address *</label>
+                    <input type="email" id="refereeEmail" placeholder="Referee's email">
+                  </div>
+                  <div class="form-group">
+                    <label for="refereePhone">Phone Number</label>
+                    <input type="tel" id="refereePhone" placeholder="Referee's phone number">
+                  </div>
+                  <div class="form-group">
+                    <label for="refereePosition">Position/Title</label>
+                    <input type="text" id="refereePosition" placeholder="Referee's position">
+                  </div>
+                  <div class="form-group">
+                    <label for="refereeCompany">Company/Organization</label>
+                    <input type="text" id="refereeCompany" placeholder="Referee's company">
+                  </div>
+                  <div class="form-group">
+                    <label for="refereeRelationship">Relationship *</label>
+                    <select id="refereeRelationship">
+                      <option value="">Select relationship</option>
+                      <option value="former_manager">Former Manager</option>
+                      <option value="colleague">Colleague</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="client">Client</option>
+                      <option value="professor">Professor</option>
+                      <option value="mentor">Mentor</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group full-width">
+                  <label for="refereeNotes">Additional Notes (Optional)</label>
+                  <textarea id="refereeNotes" rows="3" placeholder="Any additional information about this referee..."></textarea>
+                </div>
+                <div class="form-actions referee-actions">
+                  <button type="button" class="btn btn-outline" id="clearRefereeForm">
+                    Clear Form
+                  </button>
+                  <button type="button" class="btn btn-primary" id="addRefereeBtn">
+                    Add Referee
+                  </button>
+                </div>
+              </div>
+
+              <div class="referees-list">
+                <h4>Your Referees</h4>
+                <div class="referees-container" id="refereesContainer">
+                  <!-- Referees will be added here dynamically -->
+                  <div class="no-referees" id="noRefereesMessage">
+                    <p>No referees added yet. Add your first referee above.</p>
+                  </div>
+                </div>
+                <div class="referees-stats">
+                  <span id="refereesCount">0</span> referees added
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Preferences Section -->
+          <div class="form-section" id="preferencesSection">
+            <div class="section-header">
+              <h2>Job Preferences</h2>
+              <p>What you're looking for in your next role</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-group">
+                <label>Preferred Job Types *</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" name="jobType" value="full-time">
+                    <span class="checkmark"></span>
+                    Full-time
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" name="jobType" value="part-time">
+                    <span class="checkmark"></span>
+                    Part-time
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" name="jobType" value="contract">
+                    <span class="checkmark"></span>
+                    Contract
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" name="jobType" value="internship">
+                    <span class="checkmark"></span>
+                    Internship
+                  </label>
+                  <label class="checkbox-container">
+                    <input type="checkbox" name="jobType" value="remote">
+                    <span class="checkmark"></span>
+                    Remote
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="desiredSalary">Desired Salary (Monthly)</label>
+                <div class="salary-options">
+                  <div class="salary-range-group">
+                    <select id="desiredSalary" name="desiredSalary">
+                      <option value="">Select salary range</option>
+                      <option value="20k-40k">UGX 20,000 - 40,000</option>
+                      <option value="40k-60k">UGX 40,000 - 60,000</option>
+                      <option value="60k-80k">UGX 60,000 - 80,000</option>
+                      <option value="80k-100k">UGX 80,000 - 100,000</option>
+                      <option value="100k-150k">UGX 100,000 - 150,000</option>
+                      <option value="150k-200k">UGX 150,000 - 200,000</option>
+                      <option value="200k-300k">UGX 200,000 - 300,000</option>
+                      <option value="300k-500k">UGX 300,000 - 500,000</option>
+                      <option value="500k-750k">UGX 500,000 - 750,000</option>
+                      <option value="750k-1M">UGX 750,000 - 1,000,000</option>
+                      <option value="1M-1.5M">UGX 1,000,000 - 1,500,000</option>
+                      <option value="1.5M-2M">UGX 1,500,000 - 2,000,000</option>
+                      <option value="2M+">UGX 2,000,000+</option>
+                    </select>
+                  </div>
+                  <div class="negotiable-option">
+                    <label class="checkbox-container">
+                      <input type="checkbox" id="salaryNegotiable" name="salaryNegotiable">
+                      <span class="checkmark"></span>
+                      Negotiable
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="preferredLocations">Preferred Locations</label>
+                <textarea id="preferredLocations" name="preferredLocations" rows="3" placeholder="List cities or regions where you'd like to work..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="industries">Preferred Industries</label>
+                <textarea id="industries" name="industries" rows="3" placeholder="List industries you're interested in..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="relocation" name="relocation">
+                  <span class="checkmark"></span>
+                  Willing to relocate for the right opportunity
+                </label>
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="immediatelyAvailable" name="immediatelyAvailable">
+                  <span class="checkmark"></span>
+                  Immediately available to start work
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="backToDashboard">
+              <i class="fas fa-arrow-left"></i>
+              Back to Dashboard
+            </button>
+            <div class="action-buttons">
+              <button type="button" class="btn btn-outline" id="saveDraft">
+                Save Draft
+              </button>
+              <button type="submit" class="btn btn-primary" id="updateProfile">
+                <span class="btn-text">Update Profile</span>
+                <div class="btn-loader">
+                  <div class="loader"></div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal" id="successModal">
+    <div class="modal-content success-modal">
+      <div class="modal-body">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Profile Updated Successfully!</h3>
+        <p>Your profile has been updated and is now ready for employers to view.</p>
+        <div class="success-actions">
+          <button class="btn btn-secondary" id="continueEditing">Continue Editing</button>
+          <button class="btn btn-primary" id="viewDashboard">View Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Referee Email Modal -->
+  <div class="modal" id="refereeEmailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Referee Email Sent</h3>
+        <button type="button" class="modal-close" id="closeRefereeModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="email-status">
+          <i class="fas fa-envelope-circle-check"></i>
+          <h4>Reference Request Sent</h4>
+          <p>An email has been sent to <strong id="refereeEmailSent"></strong> requesting them to be your referee.</p>
+          <p>They will receive instructions on how to provide their reference.</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="closeEmailModal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="seeker_edit_profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Applications | JobLink</title>
+  <link rel="stylesheet" href="applied_jobs.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+        <span class="seeker-badge">Job Seeker</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="seeker_dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="browse_jobs.html" class="nav-link">Find Jobs</a></li>
+        <li><a href="#" class="nav-link active">My Applications</a></li>
+        <li><a href="seeker_edit_profile.html" class="nav-link">My Profile</a></li>
+        <li class="nav-divider"></li>
+        <li>
+          <div class="user-menu">
+            <img src="https://via.placeholder.com/32x32?text=U" alt="User Avatar" class="user-avatar-nav" id="userAvatarNav">
+            <a href="login.html" class="nav-link logout-btn">Logout</a>
+          </div>
+        </li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="applied-jobs-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>My Job Applications</h1>
+        <p>Track and manage all your job applications in one place</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" id="exportApplications">
+          <i class="fas fa-download"></i>
+          Export Applications
+        </button>
+        <button class="btn btn-primary" onclick="window.location.href='job_search.html'">
+          <i class="fas fa-search"></i>
+          Find More Jobs
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-overview">
+      <div class="stat-card">
+        <div class="stat-icon total">
+          <i class="fas fa-paper-plane"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="totalApplicationsCount">0</h3>
+          <p>Total Applications</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon pending">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="pendingApplicationsCount">0</h3>
+          <p>Under Review</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon shortlisted">
+          <i class="fas fa-star"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="shortlistedApplicationsCount">0</h3>
+          <p>Shortlisted</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon interview">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="interviewApplicationsCount">0</h3>
+          <p>Interview</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon rejected">
+          <i class="fas fa-times"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="rejectedApplicationsCount">0</h3>
+          <p>Not Selected</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters and Controls -->
+    <div class="filters-section">
+      <div class="filter-group">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="applicationSearch" placeholder="Search by company name, job title, or location...">
+        </div>
+        
+        <select id="statusFilter" class="filter-select">
+          <option value="all">All Applications</option>
+          <option value="applied">Applied</option>
+          <option value="under_review">Under Review</option>
+          <option value="shortlisted">Shortlisted</option>
+          <option value="interview">Interview</option>
+          <option value="rejected">Not Selected</option>
+          <option value="withdrawn">Withdrawn</option>
+        </select>
+
+        <select id="dateFilter" class="filter-select">
+          <option value="all">Any Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="older">Older</option>
+        </select>
+
+        <select id="sortBy" class="filter-select">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="company">Company A-Z</option>
+          <option value="deadline">Application Deadline</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-outline" id="clearFilters">
+          <i class="fas fa-times"></i>
+          Clear Filters
+        </button>
+        <button class="btn btn-primary" id="applyFilters">
+          <i class="fas fa-filter"></i>
+          Apply Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Applications Content -->
+    <div class="applications-content">
+      <!-- Applications List -->
+      <div class="applications-list-section">
+        <div class="section-header">
+          <h2>Your Applications</h2>
+          <div class="section-actions">
+            <button class="btn btn-outline" id="refreshApplications">
+              <i class="fas fa-sync-alt"></i>
+              Refresh
+            </button>
+            <div class="view-toggle">
+              <button class="view-btn active" data-view="detailed">
+                <i class="fas fa-th-large"></i>
+              </button>
+              <button class="view-btn" data-view="compact">
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="applications-container" id="applicationsContainer">
+          <!-- Applications will be loaded here dynamically -->
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading your applications...</p>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+          <!-- Pagination will be generated here -->
+        </div>
+      </div>
+
+      <!-- Application Details Sidebar -->
+      <div class="application-details-sidebar" id="applicationDetailsSidebar">
+        <div class="sidebar-header">
+          <h3>Application Details</h3>
+          <button class="close-sidebar" id="closeSidebar">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="sidebar-content" id="sidebarContent">
+          <div class="no-selection">
+            <i class="fas fa-file-alt"></i>
+            <p>Select an application to view details</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Withdraw Application Modal -->
+  <div id="withdrawModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Withdraw Application</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="withdraw-confirmation">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h4>Are you sure you want to withdraw this application?</h4>
+          <p>This action cannot be undone. The employer will be notified that you've withdrawn your application.</p>
+          <div class="application-info" id="withdrawApplicationInfo">
+            <!-- Application info will be populated here -->
+          </div>
+          <div class="form-group">
+            <label for="withdrawReason">Reason for withdrawal (optional)</label>
+            <textarea id="withdrawReason" rows="3" placeholder="Please share your reason for withdrawing..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelWithdraw">Cancel</button>
+        <button class="btn btn-danger" id="confirmWithdraw">
+          <i class="fas fa-ban"></i>
+          Withdraw Application
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Timeline Modal -->
+  <div id="timelineModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Application Timeline</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="timeline-container" id="timelineContent">
+          <!-- Timeline will be populated here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="closeTimeline">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact Employer Modal -->
+  <div id="contactModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Contact Employer</h3>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="contact-form">
+          <div class="application-info" id="contactApplicationInfo">
+            <!-- Application info will be populated here -->
+          </div>
+          
+          <div class="form-group">
+            <label for="contactSubject">Subject</label>
+            <input type="text" id="contactSubject" class="form-input" value="Regarding my job application" readonly>
+          </div>
+
+          <div class="form-group">
+            <label for="contactMessage">Message</label>
+            <textarea id="contactMessage" rows="6" placeholder="Type your message to the employer..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="includeResume" checked>
+              <span class="checkmark"></span>
+              Include my resume and cover letter
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelContact">Cancel</button>
+        <button class="btn btn-primary" id="sendContactMessage">
+          <i class="fas fa-paper-plane"></i>
+          Send Message
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="successToast" style="display: none;">
+    <div class="toast-content">
+      <i class="fas fa-check-circle"></i> 
+      <span id="toastMessage">Operation completed successfully!</span>
+    </div>
+  </div>
+
+  <script type="module" src="applied_jobs.js"></script>
+</body>
+</html>

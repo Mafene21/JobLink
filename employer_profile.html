@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Company Profile | JobLink</title>
+  <link rel="stylesheet" href="employer_profile.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="employer_dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="job_posting.html" class="nav-link">Post Job</a></li>
+        <li><a href="manage_jobs.html" class="nav-link">Manage Jobs</a></li>
+        <li><a href="manage_applicants.html" class="nav-link">Applications</a></li>
+        <li><a href="#" class="nav-link active">Company Profile</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#" class="nav-link" id="logoutBtn">Logout</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="company-profile-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>Company Profile</h1>
+        <p>Manage your company information and branding</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" id="previewProfile">
+          <i class="fas fa-eye"></i>
+          Preview Profile
+        </button>
+        <button class="btn btn-primary" id="saveProfile">
+          <i class="fas fa-save"></i>
+          Save Changes
+        </button>
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <!-- Left Side - Navigation -->
+      <aside class="profile-sidebar">
+        <div class="nav-sections">
+          <button class="nav-section active" data-section="basic">
+            <i class="fas fa-building"></i>
+            Basic Info
+          </button>
+          <button class="nav-section" data-section="about">
+            <i class="fas fa-info-circle"></i>
+            About Company
+          </button>
+          <button class="nav-section" data-section="contact">
+            <i class="fas fa-address-book"></i>
+            Contact Info
+          </button>
+          <button class="nav-section" data-section="social">
+            <i class="fas fa-share-alt"></i>
+            Social Media
+          </button>
+          <button class="nav-section" data-section="branding">
+            <i class="fas fa-palette"></i>
+            Branding
+          </button>
+        </div>
+
+        <!-- Profile Completion -->
+        <div class="completion-card">
+          <h4>Profile Completion</h4>
+          <div class="completion-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" id="profileProgressFill"></div>
+            </div>
+            <span class="completion-percent" id="profileCompletion">0%</span>
+          </div>
+          <p>Complete your profile to attract better candidates</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-card">
+          <h4>Company Stats</h4>
+          <div class="stats-list">
+            <div class="stat-item">
+              <i class="fas fa-briefcase"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="activeJobs">0</span>
+                <span class="stat-label">Active Jobs</span>
+              </div>
+            </div>
+            <div class="stat-item">
+              <i class="fas fa-users"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="totalApplications">0</span>
+                <span class="stat-label">Applications</span>
+              </div>
+            </div>
+            <div class="stat-item">
+              <i class="fas fa-eye"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="profileViews">0</span>
+                <span class="stat-label">Profile Views</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Side - Form Sections -->
+      <main class="profile-forms">
+        <form id="companyProfileForm">
+          <!-- Basic Information Section -->
+          <div class="form-section active" id="basicSection">
+            <div class="section-header">
+              <h2>Basic Information</h2>
+              <p>Essential details about your company</p>
+            </div>
+
+            <div class="form-content">
+              <div class="logo-upload">
+                <div class="logo-preview">
+                  <img src="https://via.placeholder.com/150x150?text=Company+Logo" alt="Company Logo" id="logoPreview">
+                  <div class="upload-overlay">
+                    <i class="fas fa-camera"></i>
+                    <span>Change Logo</span>
+                  </div>
+                </div>
+                <input type="file" id="logoInput" accept="image/*" style="display: none;">
+                <div class="logo-actions">
+                  <button type="button" class="btn-remove-logo" id="removeLogoBtn">
+                    <i class="fas fa-trash"></i>
+                    Remove Logo
+                  </button>
+                  <p class="help-text">Recommended: 150x150px PNG or JPG</p>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="companyName">Company Name *</label>
+                  <input type="text" id="companyName" name="companyName" placeholder="Enter your company name" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="companyTagline">Tagline</label>
+                  <input type="text" id="companyTagline" name="companyTagline" placeholder="Brief company tagline">
+                </div>
+                
+                <div class="form-group">
+                  <label for="industry">Industry *</label>
+                  <select id="industry" name="industry" required>
+                    <option value="">Select Industry</option>
+                    <option value="technology">Technology</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="education">Education</option>
+                    <option value="finance">Finance & Banking</option>
+                    <option value="manufacturing">Manufacturing</option>
+                    <option value="retail">Retail</option>
+                    <option value="hospitality">Hospitality</option>
+                    <option value="construction">Construction</option>
+                    <option value="transportation">Transportation</option>
+                    <option value="energy">Energy</option>
+                    <option value="telecommunications">Telecommunications</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="companySize">Company Size *</label>
+                  <select id="companySize" name="companySize" required>
+                    <option value="">Select Size</option>
+                    <option value="1-10">1-10 employees</option>
+                    <option value="11-50">11-50 employees</option>
+                    <option value="51-200">51-200 employees</option>
+                    <option value="201-500">201-500 employees</option>
+                    <option value="501-1000">501-1000 employees</option>
+                    <option value="1000+">1000+ employees</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="foundedYear">Year Founded</label>
+                  <input type="number" id="foundedYear" name="foundedYear" placeholder="YYYY" min="1900" max="2024">
+                </div>
+
+                <div class="form-group">
+                  <label for="website">Website</label>
+                  <input type="url" id="website" name="website" placeholder="https://example.com">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- About Company Section -->
+          <div class="form-section" id="aboutSection">
+            <div class="section-header">
+              <h2>About Company</h2>
+              <p>Tell candidates about your company culture and mission</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-group full-width">
+                <label for="companyDescription">Company Description *</label>
+                <textarea id="companyDescription" name="companyDescription" rows="5" placeholder="Describe your company, what you do, and what makes you unique..." required></textarea>
+                <div class="char-count">
+                  <span id="descriptionChars">0</span>/2000 characters
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="mission">Mission Statement</label>
+                <textarea id="mission" name="mission" rows="3" placeholder="Your company's mission and values..."></textarea>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="culture">Company Culture</label>
+                <textarea id="culture" name="culture" rows="3" placeholder="Describe your work environment and culture..."></textarea>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="benefits">Employee Benefits</label>
+                <textarea id="benefits" name="benefits" rows="3" placeholder="List the benefits you offer to employees..."></textarea>
+                <div class="help-text">Separate benefits with commas (e.g., Health insurance, Flexible hours, Remote work)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information Section -->
+          <div class="form-section" id="contactSection">
+            <div class="section-header">
+              <h2>Contact Information</h2>
+              <p>How candidates can reach your company</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="email">Email Address *</label>
+                  <input type="email" id="email" name="email" placeholder="contact@company.com" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="phone">Phone Number</label>
+                  <input type="tel" id="phone" name="phone" placeholder="+256 XXX XXX XXX">
+                </div>
+
+                <div class="form-group">
+                  <label for="address">Street Address</label>
+                  <input type="text" id="address" name="address" placeholder="Street address">
+                </div>
+
+                <div class="form-group">
+                  <label for="city">City</label>
+                  <input type="text" id="city" name="city" placeholder="City">
+                </div>
+
+                <div class="form-group">
+                  <label for="country">Country</label>
+                  <select id="country" name="country">
+                    <option value="">Select Country</option>
+                    <option value="uganda">Uganda</option>
+                    <option value="kenya">Kenya</option>
+                    <option value="tanzania">Tanzania</option>
+                    <option value="rwanda">Rwanda</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="postalCode">Postal Code</label>
+                  <input type="text" id="postalCode" name="postalCode" placeholder="Postal code">
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="hideContact" name="hideContact">
+                  <span class="checkmark"></span>
+                  Hide contact information from public profile
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Social Media Section -->
+          <div class="form-section" id="socialSection">
+            <div class="section-header">
+              <h2>Social Media</h2>
+              <p>Connect your social media profiles</p>
+            </div>
+
+            <div class="form-content">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="linkedin">
+                    <i class="fab fa-linkedin"></i>
+                    LinkedIn
+                  </label>
+                  <input type="url" id="linkedin" name="linkedin" placeholder="https://linkedin.com/company/...">
+                </div>
+
+                <div class="form-group">
+                  <label for="twitter">
+                    <i class="fab fa-twitter"></i>
+                    Twitter
+                  </label>
+                  <input type="url" id="twitter" name="twitter" placeholder="https://twitter.com/...">
+                </div>
+
+                <div class="form-group">
+                  <label for="facebook">
+                    <i class="fab fa-facebook"></i>
+                    Facebook
+                  </label>
+                  <input type="url" id="facebook" name="facebook" placeholder="https://facebook.com/...">
+                </div>
+
+                <div class="form-group">
+                  <label for="instagram">
+                    <i class="fab fa-instagram"></i>
+                    Instagram
+                  </label>
+                  <input type="url" id="instagram" name="instagram" placeholder="https://instagram.com/...">
+                </div>
+
+                <div class="form-group">
+                  <label for="youtube">
+                    <i class="fab fa-youtube"></i>
+                    YouTube
+                  </label>
+                  <input type="url" id="youtube" name="youtube" placeholder="https://youtube.com/...">
+                </div>
+
+                <div class="form-group">
+                  <label for="github">
+                    <i class="fab fa-github"></i>
+                    GitHub
+                  </label>
+                  <input type="url" id="github" name="github" placeholder="https://github.com/...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Branding Section -->
+          <div class="form-section" id="brandingSection">
+            <div class="section-header">
+              <h2>Branding</h2>
+              <p>Customize how your company appears to candidates</p>
+            </div>
+
+            <div class="form-content">
+              <div class="banner-upload">
+                <div class="banner-preview">
+                  <img src="https://via.placeholder.com/1200x300?text=Company+Banner" alt="Company Banner" id="bannerPreview">
+                  <div class="upload-overlay">
+                    <i class="fas fa-camera"></i>
+                    <span>Change Banner</span>
+                  </div>
+                </div>
+                <input type="file" id="bannerInput" accept="image/*" style="display: none;">
+                <div class="banner-actions">
+                  <button type="button" class="btn-remove-banner" id="removeBannerBtn">
+                    <i class="fas fa-trash"></i>
+                    Remove Banner
+                  </button>
+                  <p class="help-text">Recommended: 1200x300px PNG or JPG</p>
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="primaryColor">Primary Brand Color</label>
+                <div class="color-picker-container">
+                  <input type="color" id="primaryColor" name="primaryColor" value="#3498db">
+                  <span class="color-value">#3498db</span>
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label>Featured Images</label>
+                <div class="image-gallery">
+                  <div class="image-upload-box" id="addImageBox">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Image</span>
+                  </div>
+                  <!-- Featured images will be added here -->
+                </div>
+                <input type="file" id="galleryInput" accept="image/*" multiple style="display: none;">
+                <div class="help-text">Add up to 6 images showcasing your workplace and team</div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal" id="previewModal">
+    <div class="modal-content large-modal">
+      <div class="modal-header">
+        <h3>Company Profile Preview</h3>
+        <button class="modal-close" id="closePreviewModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="company-preview" id="companyPreview">
+          <!-- Preview content will be generated here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="closePreview">Close</button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fas fa-print"></i>
+          Print Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal" id="successModal">
+    <div class="modal-content success-modal">
+      <div class="modal-body">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Profile Updated Successfully!</h3>
+        <p>Your company profile has been updated and is now visible to job seekers.</p>
+        <div class="success-actions">
+          <button class="btn btn-secondary" id="continueEditing">Continue Editing</button>
+          <button class="btn btn-primary" id="viewDashboard">View Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="employer_profile.js"></script>
+</body>
+</html>

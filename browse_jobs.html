@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browse Jobs | JobLink</title>
+  <link rel="stylesheet" href="browse_jobs.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-handshake"></i>
+        <span>JobLink</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="seeker_dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="#" class="nav-link active">Browse Jobs</a></li>
+        <li><a href="applied_jobs.html" class="nav-link">Applications</a></li>
+        <li><a href="seeker_edit_profile.html" class="nav-link">Profile</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="login.html" class="nav-link" id="logoutBtn">Logout</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="browse-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>Find Your Dream Job</h1>
+        <p>Discover opportunities that match your skills and preferences</p>
+      </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="search-filters-section">
+      <div class="search-box">
+        <div class="search-input-container">
+          <i class="fas fa-search"></i>
+          <input type="text" id="jobSearch" placeholder="Search for jobs, companies, or keywords...">
+          <button class="btn-search" id="searchBtn">
+            <i class="fas fa-search"></i>
+            Search
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="categoryFilter">Job Category</label>
+          <select id="categoryFilter">
+            <option value="">All Categories</option>
+            <option value="technology">Technology</option>
+            <option value="healthcare">Healthcare</option>
+            <option value="education">Education</option>
+            <option value="finance">Finance</option>
+            <option value="marketing">Marketing</option>
+            <option value="sales">Sales</option>
+            <option value="engineering">Engineering</option>
+            <option value="design">Design</option>
+            <option value="business">Business</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="jobTypeFilter">Job Type</label>
+          <select id="jobTypeFilter">
+            <option value="">All Types</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+            <option value="remote">Remote</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="locationFilter">Location</label>
+          <select id="locationFilter">
+            <option value="">All Locations</option>
+            <option value="kampala">Kampala</option>
+            <option value="entebbe">Entebbe</option>
+            <option value="jinja">Jinja</option>
+            <option value="mbarara">Mbarara</option>
+            <option value="gulu">Gulu</option>
+            <option value="fort portal">Fort Portal</option>
+            <option value="masaka">Masaka</option>
+            <option value="mbale">Mbale</option>
+            <option value="remote">Remote</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="salaryFilter">Salary Range</label>
+          <select id="salaryFilter">
+            <option value="">Any Salary</option>
+            <option value="0-500000">Up to UGX 500,000</option>
+            <option value="500000-1000000">UGX 500,000 - 1M</option>
+            <option value="1000000-2000000">UGX 1M - 2M</option>
+            <option value="2000000-5000000">UGX 2M - 5M</option>
+            <option value="5000000+">UGX 5M+</option>
+          </select>
+        </div>
+
+        <button class="btn btn-outline" id="resetFilters">
+          <i class="fas fa-redo"></i>
+          Reset Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Jobs Content -->
+    <div class="jobs-content">
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <i class="fas fa-briefcase"></i>
+        </div>
+        <h2>No Jobs Found</h2>
+        <p>Try adjusting your search criteria or check back later for new opportunities.</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary" id="refreshJobs">
+            <i class="fas fa-redo"></i>
+            Refresh Jobs
+          </button>
+          <button class="btn btn-outline" id="setupAlerts">
+            <i class="fas fa-bell"></i>
+            Set Up Job Alerts
+          </button>
+        </div>
+      </div>
+
+      <!-- Jobs Grid -->
+      <div class="jobs-grid" id="jobsGrid" style="display: none;">
+        <div class="jobs-header">
+          <div class="jobs-info">
+            <h3>Available Jobs</h3>
+            <div class="jobs-count">
+              <span id="jobsCount">0</span> jobs found
+            </div>
+          </div>
+          <div class="sort-options">
+            <label for="sortBy">Sort by:</label>
+            <select id="sortBy">
+              <option value="newest">Newest First</option>
+              <option value="salary-high">Salary: High to Low</option>
+              <option value="salary-low">Salary: Low to High</option>
+              <option value="deadline">Application Deadline</option>
+            </select>
+          </div>
+        </div>
+        <div class="jobs-list" id="jobsList">
+          <!-- Jobs will be dynamically added here from Firebase -->
+        </div>
+        
+        <!-- Load More Button -->
+        <div class="load-more-section">
+          <button class="btn btn-outline" id="loadMoreJobs">
+            <i class="fas fa-plus"></i>
+            Load More Jobs
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state" id="loadingState" style="display: none;">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+        </div>
+        <p>Searching for jobs...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job Details Modal -->
+  <div class="modal" id="jobModal">
+    <div class="modal-content large-modal">
+      <div class="modal-header">
+        <h3 id="modalJobTitle">Job Title</h3>
+        <button class="modal-close" id="closeJobModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="job-details" id="jobDetailsContent">
+          <!-- Job details will be loaded here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="saveJobBtn">
+          <i class="fas fa-bookmark"></i>
+          Save Job
+        </button>
+        <button class="btn btn-primary" id="applyJobBtn">
+          <i class="fas fa-paper-plane"></i>
+          Apply Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Modal -->
+  <div class="modal" id="applicationModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Apply for <span id="applyJobTitle"></span></h3>
+        <button class="modal-close" id="closeApplicationModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="application-form">
+          <div class="form-group">
+            <label for="applicationMessage">Cover Letter (Optional)</label>
+            <textarea id="applicationMessage" rows="4" placeholder="Tell the employer why you're a good fit for this position..."></textarea>
+            <div class="char-count">
+              <span id="coverLetterChars">0</span>/1000 characters
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="attachResume" checked>
+              <span class="checkmark"></span>
+              Attach my resume from profile
+            </label>
+          </div>
+          <div class="application-info">
+            <p><strong>Note:</strong> Your profile information will be shared with the employer.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cancelApplication">Cancel</button>
+        <button class="btn btn-primary" id="submitApplication">
+          <span class="btn-text">Submit Application</span>
+          <div class="btn-loader">
+            <div class="loader"></div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job Alerts Modal -->
+  <div class="modal" id="alertsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Set Up Job Alerts</h3>
+        <button class="modal-close" id="closeAlertsModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Get notified when new jobs matching your criteria are posted.</p>
+        
+        <div class="alert-form">
+          <div class="form-group">
+            <label for="alertKeywords">Job Keywords</label>
+            <input type="text" id="alertKeywords" placeholder="e.g., Software Developer, Marketing Manager">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="alertCategory">Job Category</label>
+              <select id="alertCategory">
+                <option value="">Any Category</option>
+                <option value="technology">Technology</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="education">Education</option>
+                <option value="finance">Finance</option>
+                <option value="marketing">Marketing</option>
+                <option value="sales">Sales</option>
+                <option value="engineering">Engineering</option>
+                <option value="design">Design</option>
+                <option value="business">Business</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="alertLocation">Location</label>
+              <select id="alertLocation">
+                <option value="">Any Location</option>
+                <option value="kampala">Kampala</option>
+                <option value="entebbe">Entebbe</option>
+                <option value="jinja">Jinja</option>
+                <option value="mbarara">Mbarara</option>
+                <option value="remote">Remote</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="alertFrequency">Alert Frequency</label>
+            <select id="alertFrequency">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="instant">Instant</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="emailNotifications" checked>
+              <span class="checkmark"></span>
+              Send email notifications
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelAlert">Cancel</button>
+        <button class="btn btn-primary" id="saveAlert">Save Alert</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="browse_jobs.js"></script>
+</body>
+</html>
