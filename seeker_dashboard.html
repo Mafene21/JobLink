@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 <body>
   <!-- Navigation -->
@@ -226,36 +227,59 @@
   </div>
 
   <!-- Job Application Modal -->
-  <div class="modal" id="applicationModal">
-    <div class="modal-content">
+  <!-- Job Application Modal -->
+<div class="modal" id="applicationModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Apply for <span id="modalJobTitle"></span></h3>
+      <button type="button" class="modal-close" id="closeApplicationModal">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="application-form">
+        <div class="form-group">
+          <label for="resumeUpload">Upload Resume (PDF, DOC, DOCX) - Optional</label>
+          <div class="file-upload-area" id="resumeUploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Click to upload or drag and drop</p>
+            <span class="file-types">PDF, DOC, DOCX (Max 5MB) - Optional</span>
+            <input type="file" id="resumeUpload" accept=".pdf,.doc,.docx" hidden>
+          </div>
+          <div class="file-preview" id="resumePreview"></div>
+          <p class="file-upload-note">
+            <small>If you don't upload a resume, your profile information will be used for the application.</small>
+          </p>
+        </div>
+        <div class="form-group">
+          <label for="applicationMessage">Cover Letter (Optional)</label>
+          <textarea id="applicationMessage" rows="4" placeholder="Tell the employer why you're a good fit for this position..."></textarea>
+        </div>
+        <div class="application-actions">
+          <button class="btn btn-outline" id="cancelApplication">Cancel</button>
+          <button class="btn btn-primary" id="submitApplication">
+            <span class="btn-text">Submit Application</span>
+            <div class="btn-loader">
+              <div class="loader"></div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- Job Details Modal -->
+  <div class="modal" id="jobDetailsModal">
+    <div class="modal-content job-details-modal">
       <div class="modal-header">
-        <h3>Apply for <span id="modalJobTitle"></span></h3>
-        <button type="button" class="modal-close" id="closeApplicationModal">
+        <h3 id="jobDetailsTitle">Job Details</h3>
+        <button type="button" class="modal-close" id="closeJobDetailsModal">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <div class="modal-body">
-        <div class="application-form">
-          <div class="form-group">
-            <label for="applicationMessage">Cover Letter (Optional)</label>
-            <textarea id="applicationMessage" rows="4" placeholder="Tell the employer why you're a good fit for this position..."></textarea>
-          </div>
-          <div class="form-group">
-            <label class="checkbox-container">
-              <input type="checkbox" id="attachResume" checked>
-              <span class="checkmark"></span>
-              Attach my resume from profile
-            </label>
-          </div>
-          <div class="application-actions">
-            <button class="btn btn-outline" id="cancelApplication">Cancel</button>
-            <button class="btn btn-primary" id="submitApplication">
-              <span class="btn-text">Submit Application</span>
-              <div class="btn-loader">
-                <div class="loader"></div>
-              </div>
-            </button>
-          </div>
+        <div class="job-details-content" id="jobDetailsContent">
+          <!-- Job details will be dynamically inserted here -->
         </div>
       </div>
     </div>

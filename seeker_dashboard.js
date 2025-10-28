@@ -8,6 +8,8 @@ class SeekerDashboard {
         this.applicationsData = [];
         this.firebaseInitialized = false;
         this.currentUser = null;
+        this.currentJobApplication = null;
+        this.selectedResumeFile = null;
         this.init();
     }
 
@@ -124,6 +126,7 @@ class SeekerDashboard {
         const closeModalBtn = document.getElementById('closeApplicationModal');
         const cancelModalBtn = document.getElementById('cancelApplication');
         const submitModalBtn = document.getElementById('submitApplication');
+        const closeJobDetailsModalBtn = document.getElementById('closeJobDetailsModal');
 
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', () => {
@@ -142,6 +145,116 @@ class SeekerDashboard {
                 this.submitApplication();
             });
         }
+
+        if (closeJobDetailsModalBtn) {
+            closeJobDetailsModalBtn.addEventListener('click', () => {
+                this.hideJobDetailsModal();
+            });
+        }
+
+        // File upload events
+        this.setupFileUpload();
+    }
+
+    setupFileUpload() {
+        const resumeUpload = document.getElementById('resumeUpload');
+        const resumeUploadArea = document.getElementById('resumeUploadArea');
+
+        if (resumeUpload && resumeUploadArea) {
+            // Click to upload
+            resumeUploadArea.addEventListener('click', () => {
+                resumeUpload.click();
+            });
+
+            // File selection
+            resumeUpload.addEventListener('change', (e) => {
+                this.handleFileSelect(e.target.files);
+            });
+
+            // Drag and drop
+            resumeUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                resumeUploadArea.classList.add('dragover');
+            });
+
+            resumeUploadArea.addEventListener('dragleave', () => {
+                resumeUploadArea.classList.remove('dragover');
+            });
+
+            resumeUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                resumeUploadArea.classList.remove('dragover');
+                this.handleFileSelect(e.dataTransfer.files);
+            });
+        }
+    }
+
+    handleFileSelect(files) {
+        if (files.length === 0) return;
+
+        const file = files[0];
+        
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!allowedTypes.includes(file.type)) {
+            this.showToast('Please upload a PDF, DOC, or DOCX file', 'error');
+            return;
+        }
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showToast('File size must be less than 5MB', 'error');
+            return;
+        }
+
+        this.selectedResumeFile = file;
+        this.showFilePreview(file);
+    }
+
+    showFilePreview(file) {
+        const resumePreview = document.getElementById('resumePreview');
+        const fileSize = this.formatFileSize(file.size);
+        
+        if (resumePreview) {
+            resumePreview.innerHTML = `
+                <div class="file-preview-item">
+                    <div class="file-info">
+                        <i class="fas fa-file-pdf file-icon"></i>
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${fileSize}</div>
+                        </div>
+                    </div>
+                    <button class="remove-file" onclick="dashboard.removeResumeFile()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            resumePreview.classList.add('show');
+        }
+    }
+
+    removeResumeFile() {
+        this.selectedResumeFile = null;
+        const resumePreview = document.getElementById('resumePreview');
+        const resumeUpload = document.getElementById('resumeUpload');
+        
+        if (resumePreview) {
+            resumePreview.classList.remove('show');
+            resumePreview.innerHTML = '';
+        }
+        
+        if (resumeUpload) {
+            resumeUpload.value = '';
+        }
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     async loadDashboardData() {
@@ -615,7 +728,7 @@ class SeekerDashboard {
                         <span class="job-salary">${job.salary || 'Salary not specified'}</span>
                         <span class="job-experience">${this.getExperienceLabel(job.experienceLevel)}</span>
                     </div>
-                    <p class="job-description">${job.description || 'No description available'}</p>
+                    <p class="job-description">${job.description ? job.description.substring(0, 150) + '...' : 'No description available'}</p>
                     <div class="job-skills">
                         ${job.requiredSkills ? job.requiredSkills.slice(0, 6).map(skill => 
                             `<span class="job-skill">${skill}</span>`
@@ -633,6 +746,9 @@ class SeekerDashboard {
                         </button>
                         <button class="btn-save" onclick="dashboard.saveJob('${job.id}')">
                             <i class="fas fa-bookmark"></i> Save
+                        </button>
+                        <button class="btn-view-details" onclick="dashboard.showJobDetails('${job.id}')">
+                            View Details
                         </button>
                     </div>
                 </div>
@@ -788,6 +904,97 @@ class SeekerDashboard {
         }, 1000);
     }
 
+    // Job Details Modal
+    showJobDetails(jobId) {
+        const job = this.jobsData.find(j => j.id === jobId);
+        if (!job) return;
+
+        const jobDetailsModal = document.getElementById('jobDetailsModal');
+        const jobDetailsContent = document.getElementById('jobDetailsContent');
+        const jobDetailsTitle = document.getElementById('jobDetailsTitle');
+
+        if (jobDetailsTitle) jobDetailsTitle.textContent = job.title;
+        
+        if (jobDetailsContent) {
+            jobDetailsContent.innerHTML = `
+                <div class="job-details-meta">
+                    <div class="job-detail-item">
+                        <i class="fas fa-building"></i>
+                        <span>${job.company}</span>
+                    </div>
+                    <div class="job-detail-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${job.location}</span>
+                    </div>
+                    <div class="job-detail-item">
+                        <i class="fas fa-clock"></i>
+                        <span>${this.getJobTypeLabel(job.jobType)}</span>
+                    </div>
+                    <div class="job-detail-item">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>${job.salary || 'Salary not specified'}</span>
+                    </div>
+                    <div class="job-detail-item">
+                        <i class="fas fa-briefcase"></i>
+                        <span>${this.getExperienceLabel(job.experienceLevel)}</span>
+                    </div>
+                    <div class="job-detail-item">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>${this.getEducationLabel(job.educationLevel)}</span>
+                    </div>
+                </div>
+
+                <div class="job-details-section">
+                    <h5>Job Description</h5>
+                    <p>${job.description || 'No description available.'}</p>
+                </div>
+
+                ${job.responsibilities ? `
+                <div class="job-details-section">
+                    <h5>Key Responsibilities</h5>
+                    <ul class="job-requirements-list">
+                        ${job.responsibilities.map(resp => `<li><i class="fas fa-check"></i> ${resp}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+
+                ${job.requiredSkills ? `
+                <div class="job-details-section">
+                    <h5>Required Skills</h5>
+                    <div class="job-skills">
+                        ${job.requiredSkills.map(skill => `<span class="job-skill">${skill}</span>`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${job.benefits ? `
+                <div class="job-details-section">
+                    <h5>Benefits</h5>
+                    <ul class="job-requirements-list">
+                        ${job.benefits.map(benefit => `<li><i class="fas fa-check"></i> ${benefit}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+
+                <div class="job-details-actions">
+                    <button class="btn btn-primary" onclick="dashboard.showApplicationModal('${job.id}')">
+                        Apply Now
+                    </button>
+                    <button class="btn btn-outline" onclick="dashboard.saveJob('${job.id}')">
+                        <i class="fas fa-bookmark"></i> Save Job
+                    </button>
+                </div>
+            `;
+        }
+
+        if (jobDetailsModal) jobDetailsModal.classList.add('show');
+    }
+
+    hideJobDetailsModal() {
+        const jobDetailsModal = document.getElementById('jobDetailsModal');
+        if (jobDetailsModal) jobDetailsModal.classList.remove('show');
+    }
+
     // Application Modal
     showApplicationModal(jobId) {
         if (!this.currentUser) {
@@ -813,6 +1020,7 @@ class SeekerDashboard {
         if (applicationModal) applicationModal.classList.remove('show');
         if (applicationMessage) applicationMessage.value = '';
         this.currentJobApplication = null;
+        this.removeResumeFile();
     }
 
     async submitApplication() {
@@ -831,6 +1039,18 @@ class SeekerDashboard {
         try {
             const job = this.jobsData.find(j => j.id === this.currentJobApplication);
             
+            let resumeUrl = null;
+            let resumeFileName = null;
+
+            // Upload resume to Firebase Storage if provided
+            if (this.selectedResumeFile) {
+                const storageRef = firebase.storage().ref();
+                const resumeRef = storageRef.child(`resumes/${this.currentUser.uid}/${Date.now()}_${this.selectedResumeFile.name}`);
+                const uploadTask = await resumeRef.put(this.selectedResumeFile);
+                resumeUrl = await uploadTask.ref.getDownloadURL();
+                resumeFileName = this.selectedResumeFile.name;
+            }
+
             // Save application to Firebase
             const db = firebase.firestore();
             await db.collection('applications').add({
@@ -841,7 +1061,10 @@ class SeekerDashboard {
                 appliedDate: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'pending',
                 coverLetter: message,
-                resumeAttached: document.getElementById('attachResume')?.checked || false
+                resumeUrl: resumeUrl,
+                resumeFileName: resumeFileName,
+                hasResume: !!resumeUrl,
+                profileUsed: !resumeUrl // Indicate if profile was used instead of resume
             });
 
             this.showToast('Application submitted successfully!', 'success');
