@@ -358,20 +358,43 @@ class SeekerDashboard {
 
         try {
             const db = firebase.firestore();
-            const applicationsSnapshot = await db
-                .collection('applications')
-                .where('seekerId', '==', this.currentUser.uid)
-                .orderBy('appliedDate', 'desc')
-                .limit(5)
-                .get();
+            
+            // Try the ordered query first (if index exists)
+            let applicationsSnapshot;
+            try {
+                applicationsSnapshot = await db
+                    .collection('applications')
+                    .where('seekerId', '==', this.currentUser.uid)
+                    .orderBy('appliedDate', 'desc')
+                    .limit(5)
+                    .get();
+            } catch (indexError) {
+                console.log('Index not ready, using simple query:', indexError);
+                // Fallback: simple query without ordering
+                applicationsSnapshot = await db
+                    .collection('applications')
+                    .where('seekerId', '==', this.currentUser.uid)
+                    .limit(5)
+                    .get();
+            }
 
             this.applicationsData = [];
             applicationsSnapshot.forEach(doc => {
+                const applicationData = doc.data();
                 this.applicationsData.push({
                     id: doc.id,
-                    ...doc.data()
+                    ...applicationData
                 });
             });
+
+            // Sort manually if we used the fallback query
+            if (this.applicationsData.length > 0 && this.applicationsData[0].appliedDate) {
+                this.applicationsData.sort((a, b) => {
+                    const dateA = a.appliedDate?.toDate?.() || new Date(0);
+                    const dateB = b.appliedDate?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                });
+            }
 
             this.renderApplications();
         } catch (error) {
@@ -400,9 +423,10 @@ class SeekerDashboard {
 
             this.jobsData = [];
             jobsSnapshot.forEach(doc => {
+                const jobData = doc.data();
                 this.jobsData.push({
                     id: doc.id,
-                    ...doc.data()
+                    ...jobData
                 });
             });
 
@@ -712,11 +736,11 @@ class SeekerDashboard {
                 <div class="job-card" data-job-id="${job.id}">
                     <div class="job-card-header">
                         <div class="job-title-section">
-                            <h3>${job.title}</h3>
-                            <p class="job-company">${job.company}</p>
+                            <h3>${job.title || 'No Title'}</h3>
+                            <p class="job-company">${job.company || 'No Company'}</p>
                             <p class="job-location">
                                 <i class="fas fa-map-marker-alt"></i>
-                                ${job.location}
+                                ${job.location || 'Location not specified'}
                             </p>
                         </div>
                         <div class="job-match-score">
@@ -779,8 +803,8 @@ class SeekerDashboard {
                 <div class="application-card">
                     <div class="application-header">
                         <div class="application-job-info">
-                            <h4>${application.jobTitle}</h4>
-                            <p class="application-company">${application.companyName}</p>
+                            <h4>${application.jobTitle || 'Unknown Job'}</h4>
+                            <p class="application-company">${application.companyName || 'Unknown Company'}</p>
                             <p class="application-date">
                                 Applied on ${application.appliedDate ? new Date(application.appliedDate.toDate()).toLocaleDateString() : 'Unknown date'}
                             </p>
@@ -858,9 +882,9 @@ class SeekerDashboard {
                 }))
                 .filter(job => 
                     job.matchScore >= 30 &&
-                    (job.title.toLowerCase().includes(term) ||
-                     job.company.toLowerCase().includes(term) ||
-                     job.description.toLowerCase().includes(term) ||
+                    (job.title?.toLowerCase().includes(term) ||
+                     job.company?.toLowerCase().includes(term) ||
+                     job.description?.toLowerCase().includes(term) ||
                      (job.requiredSkills && job.requiredSkills.some(skill => 
                          skill.toLowerCase().includes(term)))
                     )
@@ -913,18 +937,18 @@ class SeekerDashboard {
         const jobDetailsContent = document.getElementById('jobDetailsContent');
         const jobDetailsTitle = document.getElementById('jobDetailsTitle');
 
-        if (jobDetailsTitle) jobDetailsTitle.textContent = job.title;
+        if (jobDetailsTitle) jobDetailsTitle.textContent = job.title || 'Job Details';
         
         if (jobDetailsContent) {
             jobDetailsContent.innerHTML = `
                 <div class="job-details-meta">
                     <div class="job-detail-item">
                         <i class="fas fa-building"></i>
-                        <span>${job.company}</span>
+                        <span>${job.company || 'No Company'}</span>
                     </div>
                     <div class="job-detail-item">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span>${job.location}</span>
+                        <span>${job.location || 'Location not specified'}</span>
                     </div>
                     <div class="job-detail-item">
                         <i class="fas fa-clock"></i>
@@ -1008,7 +1032,7 @@ class SeekerDashboard {
         const modalJobTitle = document.getElementById('modalJobTitle');
         const applicationModal = document.getElementById('applicationModal');
 
-        if (modalJobTitle) modalJobTitle.textContent = job.title;
+        if (modalJobTitle) modalJobTitle.textContent = job.title || 'this position';
         if (applicationModal) applicationModal.classList.add('show');
         this.currentJobApplication = jobId;
     }
@@ -1038,6 +1062,9 @@ class SeekerDashboard {
 
         try {
             const job = this.jobsData.find(j => j.id === this.currentJobApplication);
+            if (!job) {
+                throw new Error('Job not found');
+            }
             
             let resumeUrl = null;
             let resumeFileName = null;
@@ -1051,21 +1078,28 @@ class SeekerDashboard {
                 resumeFileName = this.selectedResumeFile.name;
             }
 
-            // Save application to Firebase
-            const db = firebase.firestore();
-            await db.collection('applications').add({
+            // Prepare application data with fallback values
+            const applicationData = {
                 seekerId: this.currentUser.uid,
                 jobId: this.currentJobApplication,
-                jobTitle: job.title,
-                companyName: job.company,
+                jobTitle: job.title || 'Unknown Position',
+                companyName: job.company || 'Unknown Company',
                 appliedDate: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'pending',
-                coverLetter: message,
-                resumeUrl: resumeUrl,
-                resumeFileName: resumeFileName,
+                coverLetter: message || '',
                 hasResume: !!resumeUrl,
                 profileUsed: !resumeUrl // Indicate if profile was used instead of resume
-            });
+            };
+
+            // Only add resume fields if resume was uploaded
+            if (resumeUrl) {
+                applicationData.resumeUrl = resumeUrl;
+                applicationData.resumeFileName = resumeFileName;
+            }
+
+            // Save application to Firebase
+            const db = firebase.firestore();
+            await db.collection('applications').add(applicationData);
 
             this.showToast('Application submitted successfully!', 'success');
             this.hideApplicationModal();
