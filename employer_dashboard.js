@@ -44,6 +44,9 @@ class EmployerDashboard {
         await this.checkAuthState();
         this.bindEvents();
         this.addTouchEvents();
+        
+        // Make instance globally available after initialization
+        window.employerDashboard = this;
     }
 
     async checkAuthState() {
@@ -227,6 +230,9 @@ class EmployerDashboard {
         const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/24x24?text=LOGO';
         const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
         
+        // Create job poster HTML
+        const jobPosterHTML = this.createJobPosterHTML(job);
+        
         return `
             <div class="job-card" data-job-id="${job.id}">
                 <div class="job-card-header">
@@ -240,20 +246,7 @@ class EmployerDashboard {
                     <div class="job-type">${this.formatJobType(job.type) || 'Full-time'}</div>
                 </div>
                 
-                ${job.jobImageUrl ? `
-                <div class="job-poster-preview">
-                    <img src="${job.jobImageUrl}" alt="${job.title || 'Job Image'}" 
-                         onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'no-poster\\'><i class=\\'fas fa-image\\'></i><span>Job Image Failed to Load</span></div>';">
-                    <div class="poster-overlay">
-                        <i class="fas fa-search-plus"></i>
-                    </div>
-                </div>
-                ` : `
-                <div class="no-poster">
-                    <i class="fas fa-image"></i>
-                    <span>No job image uploaded</span>
-                </div>
-                `}
+                ${jobPosterHTML}
                 
                 <div class="job-meta">
                     <div class="job-meta-item">
@@ -285,97 +278,94 @@ class EmployerDashboard {
         `;
     }
 
-    showNoJobsState(jobsList) {
-        jobsList.innerHTML = `
-            <div class="no-jobs-state">
-                <i class="fas fa-briefcase"></i>
-                <h3>No Job Postings Yet</h3>
-                <p>Get started by creating your first job posting</p>
-                <button class="btn btn-primary" id="createFirstJob">
-                    <i class="fas fa-plus"></i>
-                    Create Your First Job
-                </button>
-            </div>
-        `;
-        
-        document.getElementById('createFirstJob').addEventListener('click', () => {
-            this.handleCreateFirstJob();
-        });
-    }
-
-    showJobsErrorState(jobsList, error) {
-        console.error('Jobs loading error:', error);
-        
-        let errorMessage = 'Error loading jobs. Please try refreshing the page.';
-        
-        if (error.message.includes('index')) {
-            errorMessage = `
-                <h3>Setting Up Database</h3>
-                <p>We're optimizing the database for better performance. This should be ready soon.</p>
-                <p><small>Technical: ${error.message}</small></p>
-                <button class="btn btn-secondary" onclick="location.reload()">
-                    <i class="fas fa-refresh"></i>
-                    Try Again
-                </button>
+    createJobPosterHTML(job) {
+        if (job.jobImageUrl && job.jobImageUrl.trim() !== '' && job.jobImageUrl !== 'https://via.placeholder.com/150x150?text=Job+Image') {
+            return `
+                <div class="job-poster-container" data-job-id="${job.id}">
+                    <img src="${job.jobImageUrl}" 
+                         alt="${job.title || 'Job Poster'}" 
+                         class="job-poster-image"
+                         onerror="this.onerror=null; this.parentElement.outerHTML=window.employerDashboard.createNoPosterHTML('${job.id}');">
+                    <div class="poster-overlay">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
             `;
+        } else {
+            return this.createNoPosterHTML(job.id);
         }
-        
-        jobsList.innerHTML = `
-            <div class="no-jobs-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                ${errorMessage}
+    }
+
+    createNoPosterHTML(jobId) {
+        return `
+            <div class="no-poster" data-job-id="${jobId}">
+                <i class="fas fa-image"></i>
+                <span>No job poster image</span>
+                <button class="add-poster-btn" data-job-id="${jobId}">
+                    <i class="fas fa-plus"></i>
+                    Add Poster
+                </button>
             </div>
         `;
     }
 
-    bindJobCardEvents() {
-        document.querySelectorAll('.job-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('view-candidates-btn') && 
-                    !e.target.classList.contains('job-poster-preview') &&
-                    !e.target.closest('.job-poster-preview')) {
-                    const jobId = card.dataset.jobId;
-                    this.showJobDetails(jobId);
-                }
-            });
-        });
-        
-        document.querySelectorAll('.view-candidates-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const jobId = btn.dataset.jobId;
-                this.showPotentialCandidates(jobId);
-            });
-        });
-
-        // Add click event for job poster previews
-        document.querySelectorAll('.job-poster-preview').forEach(preview => {
-            preview.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const jobCard = preview.closest('.job-card');
-                const jobId = jobCard.dataset.jobId;
-                this.showJobImageModal(jobId);
-            });
-        });
+    // FIXED: Added missing showJobDetails method
+    showJobDetails(jobId) {
+        const job = this.jobs.find(j => j.id === jobId);
+        if (job) {
+            // For now, just show a toast. You can expand this to show more details
+            this.showToast(`Showing details for: ${job.title}`, 'info');
+            
+            // You can implement a detailed job view modal here
+            // this.showJobDetailModal(job);
+        }
     }
 
+    // FIXED: Added method to handle edit job poster
+    editJobPoster(jobId) {
+        this.showToast('Redirecting to edit job page...', 'info');
+        // Redirect to job editing page
+        setTimeout(() => {
+            window.location.href = `job_posting.html?edit=${jobId}`;
+        }, 1000);
+    }
+
+    // Enhanced method to show job image modal
     showJobImageModal(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
         if (!job || !job.jobImageUrl) return;
 
         // Create modal for job image
         const modal = document.createElement('div');
-        modal.className = 'modal';
+        modal.className = 'modal job-image-modal';
         modal.style.display = 'block';
+        
+        const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/40x40?text=LOGO';
+        const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
+        
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${job.title || 'Job Image'}</h3>
+                    <h3>${job.title || 'Job Poster'}</h3>
                     <span class="close-modal">&times;</span>
                 </div>
-                <div class="modal-body" style="text-align: center; padding: 0;">
-                    <img src="${job.jobImageUrl}" alt="${job.title || 'Job Image'}" style="width: 100%; max-height: 70vh; object-fit: contain;" 
-                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #95a5a6;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4></div>'">
+                <div class="modal-body" style="padding: 0;">
+                    <img src="${job.jobImageUrl}" 
+                         alt="${job.title || 'Job Poster'}" 
+                         style="width: 100%; display: block;"
+                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #95a5a6;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
+                </div>
+                <div class="job-image-info">
+                    <h4>${job.title || 'Untitled Job'}</h4>
+                    <div class="job-image-meta">
+                        <div>
+                            <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16?text=LOGO'">
+                            <span>${companyName}</span>
+                        </div>
+                        <div><i class="fas fa-map-marker-alt"></i> ${job.location || 'Remote'}</div>
+                        <div><i class="fas fa-money-bill-wave"></i> ${job.salary || 'Salary not specified'}</div>
+                        <div><i class="fas fa-clock"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -392,6 +382,62 @@ class EmployerDashboard {
             if (e.target === modal) {
                 document.body.removeChild(modal);
             }
+        });
+    }
+
+    // FIXED: Updated bindJobCardEvents with proper method references
+    bindJobCardEvents() {
+        document.querySelectorAll('.job-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('view-candidates-btn') && 
+                    !e.target.classList.contains('job-poster-container') &&
+                    !e.target.classList.contains('job-poster-image') &&
+                    !e.target.classList.contains('poster-overlay') &&
+                    !e.target.classList.contains('add-poster-btn') &&
+                    !e.target.closest('.job-poster-container') &&
+                    !e.target.closest('.no-poster')) {
+                    const jobId = card.dataset.jobId;
+                    this.showJobDetails(jobId);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.view-candidates-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const jobId = btn.dataset.jobId;
+                this.showPotentialCandidates(jobId);
+            });
+        });
+
+        // Add click event for job poster containers
+        document.querySelectorAll('.job-poster-container').forEach(container => {
+            container.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const jobId = container.dataset.jobId;
+                this.showJobImageModal(jobId);
+            });
+        });
+
+        // Add click event for add-poster buttons
+        document.querySelectorAll('.add-poster-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const jobId = btn.dataset.jobId;
+                this.editJobPoster(jobId);
+            });
+        });
+
+        // Add click event for no-poster sections (but not the button)
+        document.querySelectorAll('.no-poster').forEach(noPoster => {
+            noPoster.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('add-poster-btn') && !e.target.closest('.add-poster-btn')) {
+                    e.stopPropagation();
+                    const jobId = noPoster.dataset.jobId;
+                    this.showJobDetails(jobId);
+                }
+            });
         });
     }
 
@@ -578,10 +624,10 @@ class EmployerDashboard {
                     <div><i class="fas fa-briefcase"></i> ${candidate.preferredJobType || 'Not specified'}</div>
                 </div>
                 <div class="candidate-actions">
-                    <button class="btn-view-profile" onclick="employerDashboard.viewCandidateProfile('${candidate.id}')">
+                    <button class="btn-view-profile" data-candidate-id="${candidate.id}">
                         <i class="fas fa-eye"></i> View Profile
                     </button>
-                    <button class="btn-contact" onclick="employerDashboard.contactCandidate('${candidate.id}')">
+                    <button class="btn-contact" data-candidate-id="${candidate.id}">
                         <i class="fas fa-envelope"></i> Contact
                     </button>
                 </div>
@@ -637,6 +683,26 @@ class EmployerDashboard {
         document.getElementById('viewAllApplicants').addEventListener('click', (e) => {
             e.preventDefault();
             this.handleViewAllApplicants();
+        });
+
+        // Bind candidate action buttons in modal
+        this.bindCandidateActions();
+    }
+
+    bindCandidateActions() {
+        // Use event delegation for candidate buttons since they're dynamically loaded
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-view-profile') || e.target.closest('.btn-view-profile')) {
+                const btn = e.target.classList.contains('btn-view-profile') ? e.target : e.target.closest('.btn-view-profile');
+                const candidateId = btn.dataset.candidateId;
+                this.viewCandidateProfile(candidateId);
+            }
+            
+            if (e.target.classList.contains('btn-contact') || e.target.closest('.btn-contact')) {
+                const btn = e.target.classList.contains('btn-contact') ? e.target : e.target.closest('.btn-contact');
+                const candidateId = btn.dataset.candidateId;
+                this.contactCandidate(candidateId);
+            }
         });
     }
 
@@ -758,13 +824,13 @@ class EmployerDashboard {
                     
                     <div class="applicant-actions" style="display: flex; gap: 10px;">
                         ${applicant.seekerResume ? `
-                        <button class="btn-view-resume" onclick="employerDashboard.viewResume('${applicant.seekerResume}')" 
+                        <button class="btn-view-resume" data-resume-url="${applicant.seekerResume}" 
                                 style="background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                             <i class="fas fa-file-pdf"></i> View Resume
                         </button>
                         ` : ''}
                         
-                        <button class="btn-contact-applicant" onclick="employerDashboard.contactApplicant('${applicant.seekerId}', '${applicant.seekerEmail}')"
+                        <button class="btn-contact-applicant" data-applicant-email="${applicant.seekerEmail}"
                                 style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                             <i class="fas fa-envelope"></i> Contact
                         </button>
@@ -804,6 +870,19 @@ class EmployerDashboard {
                 document.body.removeChild(modal);
             }
         });
+
+        // Bind resume and contact buttons
+        modal.querySelectorAll('.btn-view-resume').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.viewResume(btn.dataset.resumeUrl);
+            });
+        });
+
+        modal.querySelectorAll('.btn-contact-applicant').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.contactApplicant(btn.dataset.applicantEmail);
+            });
+        });
     }
 
     viewResume(resumeUrl) {
@@ -814,7 +893,7 @@ class EmployerDashboard {
         }
     }
 
-    contactApplicant(seekerId, email) {
+    contactApplicant(email) {
         if (email) {
             window.open(`mailto:${email}?subject=Regarding Your Job Application`, '_blank');
         } else {
@@ -901,9 +980,52 @@ class EmployerDashboard {
             }, 300);
         }, 3000);
     }
+
+    showNoJobsState(jobsList) {
+        jobsList.innerHTML = `
+            <div class="no-jobs-state">
+                <i class="fas fa-briefcase"></i>
+                <h3>No Job Postings Yet</h3>
+                <p>Get started by creating your first job posting</p>
+                <button class="btn btn-primary" id="createFirstJob">
+                    <i class="fas fa-plus"></i>
+                    Create Your First Job
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('createFirstJob').addEventListener('click', () => {
+            this.handleCreateFirstJob();
+        });
+    }
+
+    showJobsErrorState(jobsList, error) {
+        console.error('Jobs loading error:', error);
+        
+        let errorMessage = 'Error loading jobs. Please try refreshing the page.';
+        
+        if (error.message.includes('index')) {
+            errorMessage = `
+                <h3>Setting Up Database</h3>
+                <p>We're optimizing the database for better performance. This should be ready soon.</p>
+                <p><small>Technical: ${error.message}</small></p>
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    <i class="fas fa-refresh"></i>
+                    Try Again
+                </button>
+            `;
+        }
+        
+        jobsList.innerHTML = `
+            <div class="no-jobs-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                ${errorMessage}
+            </div>
+        `;
+    }
 }
 
-let employerDashboard;
+// Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    employerDashboard = new EmployerDashboard();
+    new EmployerDashboard();
 });

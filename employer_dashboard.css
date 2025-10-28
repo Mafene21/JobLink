@@ -1272,3 +1272,112 @@ body {
     animation: none;
   }
 }
+
+/* Enhanced Job Poster Styles */
+.job-poster-container {
+  margin: 15px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 200px;
+  background: var(--light-gray);
+  border: 1px solid var(--light);
+  position: relative;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.job-poster-container:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.job-poster-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+  transition: var(--transition);
+}
+
+.job-poster-container:hover .job-poster-image {
+  transform: scale(1.05);
+}
+
+.poster-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.job-poster-container:hover .poster-overlay {
+  opacity: 1;
+}
+
+.poster-overlay i {
+  color: white;
+  font-size: 1.5rem;
+  background: rgba(0, 0, 0, 0.7);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-poster {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--gray);
+  background: var(--light-gray);
+  border-radius: 8px;
+  margin: 15px 0;
+  border: 2px dashed var(--light);
+  transition: var(--transition);
+}
+
+.no-poster:hover {
+  border-color: var(--primary);
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.no-poster i {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  display: block;
+  opacity: 0.5;
+}
+
+.no-poster span {
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.add-poster-btn {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.add-poster-btn:hover {
+  background: var(--primary);
+  color: var(--white);
+}
