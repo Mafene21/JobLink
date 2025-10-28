@@ -74,7 +74,7 @@ class AppliedJobs {
 
     async loadUserData() {
         try {
-            const userDoc = await getDoc(doc(db, 'users', this.currentUser.uid));
+            const userDoc = await getDoc(doc(db, 'seekers', this.currentUser.uid));
             if (userDoc.exists()) {
                 this.userData = userDoc.data();
                 this.updateUserAvatar();
@@ -86,8 +86,8 @@ class AppliedJobs {
 
     updateUserAvatar() {
         const userAvatarNav = document.getElementById('userAvatarNav');
-        if (this.userData?.photoURL) {
-            userAvatarNav.src = this.userData.photoURL;
+        if (this.userData?.profilePicture) {
+            userAvatarNav.src = this.userData.profilePicture;
         }
     }
 
@@ -104,12 +104,23 @@ class AppliedJobs {
 
             console.log('Loading applications for user:', this.currentUser.uid);
             
-            // Query applications for this user
-            const applicationsQuery = query(
-                collection(db, 'applications'),
-                where('applicantId', '==', this.currentUser.uid),
-                orderBy('appliedAt', 'desc')
-            );
+            // Query applications for this user - using the correct field name from your dashboard
+            let applicationsQuery;
+            try {
+                // Try with ordering first
+                applicationsQuery = query(
+                    collection(db, 'applications'),
+                    where('seekerId', '==', this.currentUser.uid),
+                    orderBy('appliedDate', 'desc')
+                );
+            } catch (indexError) {
+                console.log('Index not ready, using simple query:', indexError);
+                // Fallback: simple query without ordering
+                applicationsQuery = query(
+                    collection(db, 'applications'),
+                    where('seekerId', '==', this.currentUser.uid)
+                );
+            }
             
             const applicationsSnapshot = await getDocs(applicationsQuery);
             console.log('Found', applicationsSnapshot.size, 'applications');
@@ -117,29 +128,89 @@ class AppliedJobs {
             this.applications = [];
             
             for (const appDoc of applicationsSnapshot.docs) {
+                const appData = appDoc.data();
+                console.log('Application data:', appData);
+                
                 const application = { 
                     id: appDoc.id, 
-                    ...appDoc.data(),
-                    appliedAt: appDoc.data().appliedAt?.toDate ? appDoc.data().appliedAt.toDate() : new Date(appDoc.data().appliedAt || new Date())
+                    ...appData,
+                    // Use the correct field names from your dashboard
+                    appliedAt: appData.appliedDate?.toDate ? appData.appliedDate.toDate() : new Date(appData.appliedDate || new Date()),
+                    status: appData.status || 'pending',
+                    coverLetter: appData.coverLetter || '',
+                    resumeUrl: appData.resumeUrl || null,
+                    resumeFileName: appData.resumeFileName || null
                 };
                 
-                // Load job data
+                // Load job data using jobId from application
                 try {
-                    const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
-                    if (jobDoc.exists()) {
-                        application.job = jobDoc.data();
-                        
-                        // Load company data
-                        const companyDoc = await getDoc(doc(db, 'companies', application.job.employerId));
-                        if (companyDoc.exists()) {
-                            application.company = companyDoc.data();
+                    if (application.jobId) {
+                        const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
+                        if (jobDoc.exists()) {
+                            application.job = jobDoc.data();
+                            console.log('Job data:', jobDoc.data());
+                            
+                            // Try to load company data - jobs might have company name directly
+                            if (application.job.company) {
+                                application.company = {
+                                    companyName: application.job.company,
+                                    logoUrl: application.job.companyLogo || 'https://via.placeholder.com/60x60?text=Co'
+                                };
+                            }
+                        } else {
+                            console.log('Job not found for ID:', application.jobId);
+                            application.job = {
+                                title: application.jobTitle || 'Unknown Position',
+                                company: application.companyName || 'Unknown Company',
+                                location: 'Not specified',
+                                type: 'Not specified',
+                                salary: 'Not specified'
+                            };
+                            application.company = {
+                                companyName: application.companyName || 'Unknown Company',
+                                logoUrl: 'https://via.placeholder.com/60x60?text=Co'
+                            };
                         }
+                    } else {
+                        // Fallback if jobId is not available
+                        application.job = {
+                            title: application.jobTitle || 'Unknown Position',
+                            company: application.companyName || 'Unknown Company',
+                            location: 'Not specified',
+                            type: 'Not specified',
+                            salary: 'Not specified'
+                        };
+                        application.company = {
+                            companyName: application.companyName || 'Unknown Company',
+                            logoUrl: 'https://via.placeholder.com/60x60?text=Co'
+                        };
                     }
                 } catch (error) {
-                    console.error('Error loading job/company data:', error);
+                    console.error('Error loading job data:', error);
+                    // Create fallback job data
+                    application.job = {
+                        title: application.jobTitle || 'Unknown Position',
+                        company: application.companyName || 'Unknown Company',
+                        location: 'Not specified',
+                        type: 'Not specified',
+                        salary: 'Not specified'
+                    };
+                    application.company = {
+                        companyName: application.companyName || 'Unknown Company',
+                        logoUrl: 'https://via.placeholder.com/60x60?text=Co'
+                    };
                 }
                 
                 this.applications.push(application);
+            }
+            
+            // Sort manually if we used the fallback query
+            if (this.applications.length > 0) {
+                this.applications.sort((a, b) => {
+                    const dateA = a.appliedAt || new Date(0);
+                    const dateB = b.appliedAt || new Date(0);
+                    return dateB - dateA;
+                });
             }
             
             this.applyFilters();
@@ -175,6 +246,7 @@ class AppliedJobs {
 
     matchesDateFilter(appliedDate, filter) {
         if (filter === 'all') return true;
+        if (!appliedDate) return true;
         
         const now = new Date();
         const diffTime = Math.abs(now - appliedDate);
@@ -192,10 +264,10 @@ class AppliedJobs {
     sortApplications() {
         switch (this.filters.sortBy) {
             case 'newest':
-                this.filteredApplications.sort((a, b) => b.appliedAt - a.appliedAt);
+                this.filteredApplications.sort((a, b) => (b.appliedAt || new Date(0)) - (a.appliedAt || new Date(0)));
                 break;
             case 'oldest':
-                this.filteredApplications.sort((a, b) => a.appliedAt - b.appliedAt);
+                this.filteredApplications.sort((a, b) => (a.appliedAt || new Date(0)) - (b.appliedAt || new Date(0)));
                 break;
             case 'company':
                 this.filteredApplications.sort((a, b) => 
@@ -203,11 +275,8 @@ class AppliedJobs {
                 );
                 break;
             case 'deadline':
-                this.filteredApplications.sort((a, b) => {
-                    const deadlineA = a.job?.applicationDeadline?.toDate ? a.job.applicationDeadline.toDate() : new Date(a.job?.applicationDeadline || 0);
-                    const deadlineB = b.job?.applicationDeadline?.toDate ? b.job.applicationDeadline.toDate() : new Date(b.job?.applicationDeadline || 0);
-                    return deadlineA - deadlineB;
-                });
+                // Since we don't have deadline in applications, sort by applied date
+                this.filteredApplications.sort((a, b) => (b.appliedAt || new Date(0)) - (a.appliedAt || new Date(0)));
                 break;
         }
     }
@@ -220,12 +289,15 @@ class AppliedJobs {
                 <div class="empty-state">
                     <i class="fas fa-file-alt"></i>
                     <h3>No Applications Found</h3>
-                    <p>No applications match your current filters. Try adjusting your search criteria or apply to more jobs.</p>
+                    <p>${this.applications.length === 0 ? 
+                        "You haven't applied to any jobs yet. Start applying to see your applications here!" : 
+                        "No applications match your current filters. Try adjusting your search criteria."}
+                    </p>
                     <div class="action-buttons" style="justify-content: center;">
                         <button class="btn btn-primary" onclick="appliedJobs.clearFilters()">
                             Clear Filters
                         </button>
-                        <button class="btn btn-secondary" onclick="window.location.href='job_search.html'">
+                        <button class="btn btn-secondary" onclick="window.location.href='browse_jobs.html'">
                             Find Jobs
                         </button>
                     </div>
@@ -262,11 +334,10 @@ class AppliedJobs {
     createApplicationCard(application, isCompact = false) {
         const job = application.job || {};
         const company = application.company || {};
-        const statusClass = `status-${application.status || 'applied'}`;
-        const cardClass = `application-card ${application.status || 'applied'}`;
+        const statusClass = `status-${application.status || 'pending'}`;
+        const cardClass = `application-card ${application.status || 'pending'}`;
         
-        const appliedDate = this.formatDate(application.appliedAt);
-        const deadline = job.applicationDeadline ? this.formatDate(job.applicationDeadline.toDate()) : 'Not specified';
+        const appliedDate = application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently';
 
         if (isCompact) {
             return `
@@ -328,7 +399,7 @@ class AppliedJobs {
                                 </div>
                                 <div class="application-meta-item">
                                     <i class="fas fa-calendar-alt"></i>
-                                    Deadline: ${deadline}
+                                    Status: ${this.formatStatus(application.status)}
                                 </div>
                             </div>
                         </div>
@@ -352,8 +423,8 @@ class AppliedJobs {
                         <span class="detail-value">${job.salary || 'Not specified'}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">Last Updated</span>
-                        <span class="detail-value">${application.updatedAt ? this.formatDate(application.updatedAt.toDate()) : appliedDate}</span>
+                        <span class="detail-label">Applied Date</span>
+                        <span class="detail-value">${application.appliedAt ? application.appliedAt.toLocaleDateString() : 'Not specified'}</span>
                     </div>
                 </div>
 
@@ -383,14 +454,13 @@ class AppliedJobs {
 
     formatStatus(status) {
         const statusMap = {
-            'applied': 'Applied',
-            'under_review': 'Under Review',
-            'shortlisted': 'Shortlisted',
-            'interview': 'Interview',
+            'pending': 'Under Review',
+            'reviewed': 'Under Review',
+            'accepted': 'Accepted',
             'rejected': 'Not Selected',
             'withdrawn': 'Withdrawn'
         };
-        return statusMap[status] || status || 'Applied';
+        return statusMap[status] || status || 'Under Review';
     }
 
     formatJobType(jobType) {
@@ -405,7 +475,7 @@ class AppliedJobs {
     }
 
     formatDate(date) {
-        if (!date) return 'N/A';
+        if (!date) return 'Recently';
         
         const now = new Date();
         const diffTime = Math.abs(now - date);
@@ -481,12 +551,25 @@ class AppliedJobs {
 
         content.innerHTML = this.createApplicationDetailsHTML(application);
         sidebar.classList.add('active');
+        
+        // Bind sidebar action buttons
+        setTimeout(() => {
+            document.getElementById('viewTimelineFromSidebar')?.addEventListener('click', () => {
+                this.showTimelineModal(applicationId);
+            });
+            document.getElementById('contactEmployerFromSidebar')?.addEventListener('click', () => {
+                this.showContactModal(applicationId);
+            });
+            document.getElementById('withdrawFromSidebar')?.addEventListener('click', () => {
+                this.showWithdrawModal(applicationId);
+            });
+        }, 100);
     }
 
     createApplicationDetailsHTML(application) {
         const job = application.job || {};
         const company = application.company || {};
-        const statusClass = `status-${application.status || 'applied'}`;
+        const statusClass = `status-${application.status || 'pending'}`;
 
         return `
             <div class="application-detail-view">
@@ -496,7 +579,7 @@ class AppliedJobs {
                              alt="${company.companyName}" class="company-logo">
                         <div class="company-info">
                             <h3>${company.companyName || 'Unknown Company'}</h3>
-                            <p>${company.industry || 'Industry not specified'} • ${company.companySize || 'Size not specified'}</p>
+                            <p>${job.location || 'Location not specified'}</p>
                         </div>
                     </div>
                 </div>
@@ -530,17 +613,6 @@ class AppliedJobs {
                 </div>
                 ` : ''}
 
-                ${job.requirements ? `
-                <div class="detail-section">
-                    <h4>Requirements</h4>
-                    <ul class="requirements-list">
-                        ${job.requirements.split('\n').filter(req => req.trim()).map(req => 
-                            `<li><i class="fas fa-check"></i> ${req}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-
                 <div class="detail-section">
                     <h4>Application Information</h4>
                     <div class="detail-grid">
@@ -550,15 +622,11 @@ class AppliedJobs {
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Applied Date</span>
-                            <span class="detail-value">${application.appliedAt.toLocaleDateString()}</span>
+                            <span class="detail-value">${application.appliedAt ? application.appliedAt.toLocaleDateString() : 'Not specified'}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Current Status</span>
                             <span class="detail-value status-badge ${statusClass}">${this.formatStatus(application.status)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Application Deadline</span>
-                            <span class="detail-value">${job.applicationDeadline ? job.applicationDeadline.toDate().toLocaleDateString() : 'Not specified'}</span>
                         </div>
                     </div>
                 </div>
@@ -587,16 +655,16 @@ class AppliedJobs {
                 <div class="application-timeline">
                     <h4>Application Timeline</h4>
                     <div class="timeline-item">
-                        <div class="timeline-date">${this.formatDate(application.appliedAt)}</div>
+                        <div class="timeline-date">${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'}</div>
                         <div class="timeline-content">
                             <strong>Application Submitted</strong>
                             <p>You applied for the ${job.title} position at ${company.companyName}.</p>
                         </div>
                     </div>
                     
-                    ${application.status === 'under_review' ? `
+                    ${application.status === 'reviewed' || application.status === 'pending' ? `
                     <div class="timeline-item">
-                        <div class="timeline-date">Recently</div>
+                        <div class="timeline-date">Currently</div>
                         <div class="timeline-content">
                             <strong>Under Review</strong>
                             <p>Your application is being reviewed by the hiring team.</p>
@@ -604,22 +672,12 @@ class AppliedJobs {
                     </div>
                     ` : ''}
                     
-                    ${application.status === 'shortlisted' ? `
+                    ${application.status === 'accepted' ? `
                     <div class="timeline-item success">
                         <div class="timeline-date">Recently</div>
                         <div class="timeline-content">
-                            <strong>Shortlisted</strong>
-                            <p>Your application has been shortlisted! The employer may contact you for next steps.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${application.status === 'interview' ? `
-                    <div class="timeline-item success">
-                        <div class="timeline-date">${application.interviewDate ? this.formatDate(application.interviewDate.toDate()) : 'Soon'}</div>
-                        <div class="timeline-content">
-                            <strong>Interview Stage</strong>
-                            <p>You've been invited for an interview. ${application.interviewDate ? `Scheduled for ${application.interviewDate.toDate().toLocaleString()}` : 'Date to be confirmed.'}</p>
+                            <strong>Application Accepted</strong>
+                            <p>Congratulations! Your application has been accepted.</p>
                         </div>
                     </div>
                     ` : ''}
@@ -673,17 +731,17 @@ class AppliedJobs {
         return `
             <div class="timeline-container">
                 <div class="timeline-event">
-                    <div class="event-date">${application.appliedAt.toLocaleString()}</div>
+                    <div class="event-date">${application.appliedAt ? application.appliedAt.toLocaleString() : 'Recently'}</div>
                     <div class="event-title">Application Submitted</div>
                     <div class="event-description">
                         You applied for the <strong>${job.title}</strong> position at <strong>${company.companyName}</strong>.
-                        ${application.coverLetter ? 'Your cover letter and resume were submitted successfully.' : 'Your resume was submitted successfully.'}
+                        ${application.coverLetter ? 'Your cover letter and resume were submitted successfully.' : 'Your application was submitted successfully.'}
                     </div>
                 </div>
 
-                ${application.status === 'under_review' ? `
+                ${application.status === 'pending' || application.status === 'reviewed' ? `
                 <div class="timeline-event warning">
-                    <div class="event-date">${application.updatedAt ? application.updatedAt.toDate().toLocaleString() : 'Recently'}</div>
+                    <div class="event-date">Currently</div>
                     <div class="event-title">Under Review</div>
                     <div class="event-description">
                         Your application is currently being reviewed by the hiring team at ${company.companyName}. 
@@ -692,40 +750,23 @@ class AppliedJobs {
                 </div>
                 ` : ''}
 
-                ${application.status === 'shortlisted' ? `
+                ${application.status === 'accepted' ? `
                 <div class="timeline-event success">
-                    <div class="event-date">${application.updatedAt ? application.updatedAt.toDate().toLocaleString() : 'Recently'}</div>
-                    <div class="event-title">Shortlisted</div>
+                    <div class="event-date">Recently</div>
+                    <div class="event-title">Application Accepted</div>
                     <div class="event-description">
-                        Congratulations! Your application has been shortlisted. The employer is impressed with your qualifications 
-                        and may contact you for the next stage of the hiring process.
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.status === 'interview' ? `
-                <div class="timeline-event success">
-                    <div class="event-date">${application.interviewDate ? application.interviewDate.toDate().toLocaleString() : 'To be scheduled'}</div>
-                    <div class="event-title">Interview Invitation</div>
-                    <div class="event-description">
-                        You've been invited for an interview! 
-                        ${application.interviewDate ? 
-                            `The interview is scheduled for <strong>${application.interviewDate.toDate().toLocaleString()}</strong>.` : 
-                            'The interview date will be confirmed soon.'
-                        }
-                        ${application.notes ? `<br><br><strong>Additional Notes:</strong> ${application.notes}` : ''}
+                        Congratulations! Your application has been accepted. The employer may contact you for next steps.
                     </div>
                 </div>
                 ` : ''}
 
                 ${application.status === 'rejected' ? `
                 <div class="timeline-event rejected">
-                    <div class="event-date">${application.updatedAt ? application.updatedAt.toDate().toLocaleString() : 'Recently'}</div>
+                    <div class="event-date">Recently</div>
                     <div class="event-title">Application Not Selected</div>
                     <div class="event-description">
                         Unfortunately, your application was not selected for this position. 
-                        ${application.notes ? `<br><br><strong>Feedback:</strong> ${application.notes}` : 
-                        'We encourage you to continue applying for other positions that match your skills and experience.'}
+                        We encourage you to continue applying for other positions that match your skills and experience.
                     </div>
                 </div>
                 ` : ''}
@@ -758,7 +799,7 @@ class AppliedJobs {
 
         applicationInfo.innerHTML = `
             <strong>${company.companyName || 'Company'}</strong><br>
-            <small>Regarding your application for: ${job.title} (Applied: ${this.formatDate(application.appliedAt)})</small>
+            <small>Regarding your application for: ${job.title} (Applied: ${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'})</small>
         `;
 
         modal.style.display = 'flex';
@@ -807,7 +848,7 @@ class AppliedJobs {
 
         applicationInfo.innerHTML = `
             <strong>${job.title} at ${company.companyName}</strong><br>
-            <small>Applied: ${this.formatDate(application.appliedAt)} • Current Status: ${this.formatStatus(application.status)}</small>
+            <small>Applied: ${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'} • Current Status: ${this.formatStatus(application.status)}</small>
         `;
 
         modal.style.display = 'flex';
@@ -912,9 +953,9 @@ class AppliedJobs {
     updateStats() {
         const totalApplications = this.applications.length;
         const pendingApplications = this.applications.filter(app => 
-            app.status === 'applied' || app.status === 'under_review'
+            app.status === 'pending' || app.status === 'reviewed'
         ).length;
-        const shortlistedApplications = this.applications.filter(app => app.status === 'shortlisted').length;
+        const shortlistedApplications = this.applications.filter(app => app.status === 'accepted').length;
         const interviewApplications = this.applications.filter(app => app.status === 'interview').length;
         const rejectedApplications = this.applications.filter(app => 
             app.status === 'rejected' || app.status === 'withdrawn'
@@ -961,12 +1002,6 @@ class AppliedJobs {
             this.clearFilters();
         });
 
-        // Apply filters
-        document.getElementById('applyFilters').addEventListener('click', () => {
-            this.applyFilters();
-            this.renderApplications();
-        });
-
         // View toggle
         document.querySelectorAll('.view-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -983,19 +1018,6 @@ class AppliedJobs {
         // Close sidebar
         document.getElementById('closeSidebar').addEventListener('click', () => {
             document.getElementById('applicationDetailsSidebar').classList.remove('active');
-        });
-
-        // Sidebar actions
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'viewTimelineFromSidebar' && this.currentApplication) {
-                this.showTimelineModal(this.currentApplication.id);
-            }
-            if (e.target.id === 'contactEmployerFromSidebar' && this.currentApplication) {
-                this.showContactModal(this.currentApplication.id);
-            }
-            if (e.target.id === 'withdrawFromSidebar' && this.currentApplication) {
-                this.showWithdrawModal(this.currentApplication.id);
-            }
         });
 
         // Modal close events

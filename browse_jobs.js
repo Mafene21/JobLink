@@ -46,6 +46,7 @@ class BrowseJobs {
         } catch (error) {
             console.error("Firebase initialization error:", error);
             this.firebaseInitialized = false;
+            this.showToast('Failed to initialize Firebase. Please refresh the page.', 'error');
         }
     }
 
@@ -73,6 +74,12 @@ class BrowseJobs {
             if (e.key === 'Enter') {
                 this.handleSearch();
             }
+        });
+
+        // Real-time search
+        document.getElementById('jobSearch').addEventListener('input', (e) => {
+            this.filters.search = e.target.value.toLowerCase();
+            this.applyFilters();
         });
 
         // Filter changes
@@ -105,6 +112,7 @@ class BrowseJobs {
         document.getElementById('sortBy').addEventListener('change', (e) => {
             this.sortBy = e.target.value;
             this.sortJobs();
+            this.renderJobs();
         });
 
         // Empty state actions
@@ -201,33 +209,146 @@ class BrowseJobs {
             this.showLoadingState();
             
             const db = firebase.firestore();
-            const jobsSnapshot = await db.collection('jobs')
-                .where('status', '==', 'active')
-                .orderBy('postedDate', 'desc')
-                .get();
+            console.log('🔍 Loading jobs from Firebase...');
+            
+            // Try to get ALL documents from the jobs collection
+            let jobsSnapshot;
+            try {
+                // First, let's just get everything without any filters
+                jobsSnapshot = await db.collection('jobs').get();
+                console.log('✅ Successfully fetched jobs collection');
+            } catch (error) {
+                console.error('❌ Error fetching jobs:', error);
+                this.showToast('Error connecting to database', 'error');
+                this.showEmptyState();
+                return;
+            }
 
             this.jobs = [];
+            
+            if (jobsSnapshot.empty) {
+                console.log('📭 Jobs collection is empty');
+                this.showEmptyState();
+                this.showToast('No jobs found in the database', 'info');
+                return;
+            }
+
+            console.log(`📊 Found ${jobsSnapshot.size} documents in jobs collection`);
+            
             jobsSnapshot.forEach(doc => {
                 const jobData = doc.data();
-                this.jobs.push({
+                console.log(`📄 Processing job document ${doc.id}:`, jobData);
+                
+                // Create a normalized job object with fallbacks
+                const job = {
                     id: doc.id,
-                    ...jobData,
-                    postedDate: jobData.postedDate?.toDate() || new Date(),
-                    deadline: jobData.deadline?.toDate() || null
-                });
+                    // Handle title with multiple possible field names
+                    title: jobData.title || jobData.jobTitle || jobData.position || 'Untitled Position',
+                    // Handle company with multiple possible field names
+                    company: jobData.company || jobData.companyName || jobData.employer || 'Unknown Company',
+                    // Handle location
+                    location: jobData.location || jobData.jobLocation || 'Not specified',
+                    // Handle job type
+                    jobType: jobData.jobType || jobData.type || jobData.employmentType || 'full-time',
+                    // Handle category
+                    category: jobData.category || jobData.industry || jobData.field || 'other',
+                    // Handle description
+                    description: jobData.description || jobData.jobDescription || jobData.details || 'No description available.',
+                    // Handle salary
+                    salary: jobData.salary || jobData.salaryAmount || jobData.pay || 0,
+                    salaryType: jobData.salaryType || jobData.payFrequency || 'monthly',
+                    // Handle required skills
+                    requiredSkills: jobData.requiredSkills || jobData.skills || jobData.qualifications || [],
+                    // Handle experience level
+                    experienceLevel: jobData.experienceLevel || jobData.experience || jobData.requiredExperience || 'Not specified',
+                    // Handle status
+                    status: jobData.status || 'active',
+                    // Handle urgent flag
+                    urgent: jobData.urgent || jobData.hiringUrgently || false,
+                    // Handle contact email
+                    contactEmail: jobData.contactEmail || jobData.email || jobData.applicationEmail || null,
+                    // Handle employer ID
+                    employerId: jobData.employerId || jobData.postedBy || 'unknown'
+                };
+
+                // Handle dates - try multiple possible field names
+                if (jobData.postedDate && jobData.postedDate.toDate) {
+                    job.postedDate = jobData.postedDate.toDate();
+                } else if (jobData.createdAt && jobData.createdAt.toDate) {
+                    job.postedDate = jobData.createdAt.toDate();
+                } else if (jobData.timestamp && jobData.timestamp.toDate) {
+                    job.postedDate = jobData.timestamp.toDate();
+                } else if (jobData.datePosted && jobData.datePosted.toDate) {
+                    job.postedDate = jobData.datePosted.toDate();
+                } else {
+                    job.postedDate = new Date(jobData.postedDate || jobData.createdAt || jobData.timestamp || Date.now());
+                }
+
+                // Handle deadline
+                if (jobData.deadline && jobData.deadline.toDate) {
+                    job.deadline = jobData.deadline.toDate();
+                } else if (jobData.applicationDeadline && jobData.applicationDeadline.toDate) {
+                    job.deadline = jobData.applicationDeadline.toDate();
+                } else if (jobData.closingDate && jobData.closingDate.toDate) {
+                    job.deadline = jobData.closingDate.toDate();
+                } else {
+                    job.deadline = jobData.deadline ? new Date(jobData.deadline) : null;
+                }
+
+                // Handle arrays that might be stored as strings
+                if (typeof job.requiredSkills === 'string') {
+                    job.requiredSkills = job.requiredSkills.split(',').map(skill => skill.trim());
+                }
+
+                // Handle requirements
+                if (jobData.requirements) {
+                    if (Array.isArray(jobData.requirements)) {
+                        job.requirements = jobData.requirements;
+                    } else if (typeof jobData.requirements === 'string') {
+                        job.requirements = jobData.requirements.split('\n').filter(req => req.trim());
+                    }
+                } else {
+                    job.requirements = ['No specific requirements listed'];
+                }
+
+                // Handle responsibilities
+                if (jobData.responsibilities) {
+                    if (Array.isArray(jobData.responsibilities)) {
+                        job.responsibilities = jobData.responsibilities;
+                    } else if (typeof jobData.responsibilities === 'string') {
+                        job.responsibilities = jobData.responsibilities.split('\n').filter(resp => resp.trim());
+                    }
+                } else {
+                    job.responsibilities = ['No specific responsibilities listed'];
+                }
+
+                // Handle benefits
+                if (jobData.benefits) {
+                    if (Array.isArray(jobData.benefits)) {
+                        job.benefits = jobData.benefits;
+                    } else if (typeof jobData.benefits === 'string') {
+                        job.benefits = jobData.benefits.split('\n').filter(benefit => benefit.trim());
+                    }
+                }
+
+                console.log(`✅ Processed job: ${job.title} at ${job.company}`);
+                this.jobs.push(job);
             });
 
-            console.log(`Loaded ${this.jobs.length} jobs from Firebase`);
+            console.log(`🎉 Successfully loaded ${this.jobs.length} jobs from Firebase`);
+            console.log('Sample job:', this.jobs[0]);
 
             if (this.jobs.length === 0) {
                 this.showEmptyState();
+                this.showToast('No jobs found in the database.', 'info');
             } else {
                 this.applyFilters();
+                this.showToast(`Loaded ${this.jobs.length} jobs successfully`, 'success');
             }
             
         } catch (error) {
-            console.error('Error loading jobs:', error);
-            this.showToast('Error loading jobs. Please try again.', 'error');
+            console.error('💥 Error loading jobs:', error);
+            this.showToast('Error loading jobs. Please check console for details.', 'error');
             this.showEmptyState();
         }
     }
@@ -239,19 +360,32 @@ class BrowseJobs {
     }
 
     applyFilters() {
+        this.currentPage = 1; // Reset to first page when filters change
+        
+        if (this.jobs.length === 0) {
+            this.showEmptyState();
+            return;
+        }
+
+        console.log(`🔍 Applying filters to ${this.jobs.length} jobs`);
+        
         this.filteredJobs = this.jobs.filter(job => {
             // Search filter
             if (this.filters.search) {
                 const searchTerm = this.filters.search.toLowerCase();
                 const matchesSearch = 
-                    job.title.toLowerCase().includes(searchTerm) ||
-                    job.company.toLowerCase().includes(searchTerm) ||
-                    job.description.toLowerCase().includes(searchTerm) ||
-                    job.category.toLowerCase().includes(searchTerm) ||
+                    (job.title && job.title.toLowerCase().includes(searchTerm)) ||
+                    (job.company && job.company.toLowerCase().includes(searchTerm)) ||
+                    (job.description && job.description.toLowerCase().includes(searchTerm)) ||
+                    (job.category && job.category.toLowerCase().includes(searchTerm)) ||
                     (job.requiredSkills && job.requiredSkills.some(skill => 
-                        skill.toLowerCase().includes(searchTerm)));
+                        skill.toLowerCase().includes(searchTerm))) ||
+                    (job.location && job.location.toLowerCase().includes(searchTerm));
 
-                if (!matchesSearch) return false;
+                if (!matchesSearch) {
+                    console.log(`❌ Job "${job.title}" filtered out by search`);
+                    return false;
+                }
             }
 
             // Category filter
@@ -265,8 +399,12 @@ class BrowseJobs {
             }
 
             // Location filter
-            if (this.filters.location && job.location !== this.filters.location) {
-                return false;
+            if (this.filters.location) {
+                if (this.filters.location === 'remote' && job.location.toLowerCase().includes('remote')) {
+                    // Allow remote jobs
+                } else if (job.location !== this.filters.location) {
+                    return false;
+                }
             }
 
             // Salary filter
@@ -281,9 +419,11 @@ class BrowseJobs {
                 if (salaryRange === '5000000+' && jobSalary < 5000000) return false;
             }
 
+            console.log(`✅ Job "${job.title}" passed all filters`);
             return true;
         });
 
+        console.log(`📊 After filtering: ${this.filteredJobs.length} jobs remain`);
         this.sortJobs();
         this.renderJobs();
     }
@@ -291,6 +431,8 @@ class BrowseJobs {
     sortJobs() {
         if (this.filteredJobs.length === 0) return;
 
+        console.log(`🔄 Sorting ${this.filteredJobs.length} jobs by ${this.sortBy}`);
+        
         switch (this.sortBy) {
             case 'newest':
                 this.filteredJobs.sort((a, b) => b.postedDate - a.postedDate);
@@ -327,6 +469,7 @@ class BrowseJobs {
             salary: ''
         };
         this.sortBy = 'newest';
+        this.currentPage = 1;
 
         this.applyFilters();
         this.showToast('Filters reset successfully', 'info');
@@ -364,18 +507,23 @@ class BrowseJobs {
     renderJobs() {
         const jobsList = document.getElementById('jobsList');
         const jobsCount = document.getElementById('jobsCount');
+        const loadMoreBtn = document.getElementById('loadMoreJobs');
         
         jobsCount.textContent = this.filteredJobs.length;
         
         if (this.filteredJobs.length === 0) {
+            console.log('📭 No jobs to display after filtering');
             this.showEmptyState();
+            loadMoreBtn.style.display = 'none';
             return;
         }
         
         const startIndex = (this.currentPage - 1) * this.jobsPerPage;
         const endIndex = startIndex + this.jobsPerPage;
-        const jobsToShow = this.filteredJobs.slice(startIndex, endIndex);
+        const jobsToShow = this.filteredJobs.slice(0, endIndex); // Show all up to current page
 
+        console.log(`🎨 Rendering ${jobsToShow.length} jobs`);
+        
         jobsList.innerHTML = jobsToShow.map(job => `
             <div class="job-card" data-job-id="${job.id}">
                 <div class="job-header">
@@ -411,16 +559,18 @@ class BrowseJobs {
                     </div>
                 </div>
                 
-                <p class="job-description">${job.description}</p>
+                <p class="job-description">${job.description.substring(0, 200)}${job.description.length > 200 ? '...' : ''}</p>
                 
+                ${job.requiredSkills && job.requiredSkills.length > 0 ? `
                 <div class="job-skills">
-                    ${job.requiredSkills ? job.requiredSkills.slice(0, 5).map(skill => 
+                    ${job.requiredSkills.slice(0, 5).map(skill => 
                         `<span class="skill-tag">${skill}</span>`
-                    ).join('') : ''}
-                    ${job.requiredSkills && job.requiredSkills.length > 5 ? 
+                    ).join('')}
+                    ${job.requiredSkills.length > 5 ? 
                         `<span class="skill-tag">+${job.requiredSkills.length - 5} more</span>` : ''
                     }
                 </div>
+                ` : ''}
                 
                 <div class="job-actions">
                     <button class="btn btn-primary btn-sm view-details" data-job-id="${job.id}">
@@ -449,6 +599,13 @@ class BrowseJobs {
                 </div>
             </div>
         `).join('');
+        
+        // Show/hide load more button
+        if (endIndex < this.filteredJobs.length) {
+            loadMoreBtn.style.display = 'block';
+        } else {
+            loadMoreBtn.style.display = 'none';
+        }
         
         this.attachJobEventListeners();
         this.showJobsGrid();
@@ -495,7 +652,10 @@ class BrowseJobs {
 
     showJobModal(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
-        if (!job) return;
+        if (!job) {
+            this.showToast('Job not found', 'error');
+            return;
+        }
 
         document.getElementById('modalJobTitle').textContent = job.title;
         
@@ -519,26 +679,36 @@ class BrowseJobs {
                 <p>${job.description}</p>
             </div>
 
+            ${job.requirements && job.requirements.length > 0 ? `
             <div class="job-detail-section">
                 <h4>Requirements</h4>
                 <ul>
-                    ${job.requirements ? job.requirements.map(req => `<li>${req}</li>`).join('') : '<li>No specific requirements listed</li>'}
+                    ${Array.isArray(job.requirements) ? 
+                      job.requirements.map(req => `<li>${req}</li>`).join('') : 
+                      `<li>${job.requirements}</li>`}
                 </ul>
             </div>
+            ` : ''}
 
+            ${job.responsibilities && job.responsibilities.length > 0 ? `
             <div class="job-detail-section">
                 <h4>Responsibilities</h4>
                 <ul>
-                    ${job.responsibilities ? job.responsibilities.map(resp => `<li>${resp}</li>`).join('') : '<li>No specific responsibilities listed</li>'}
+                    ${Array.isArray(job.responsibilities) ? 
+                      job.responsibilities.map(resp => `<li>${resp}</li>`).join('') : 
+                      `<li>${job.responsibilities}</li>`}
                 </ul>
             </div>
+            ` : ''}
 
+            ${job.requiredSkills && job.requiredSkills.length > 0 ? `
             <div class="job-detail-section">
                 <h4>Skills Required</h4>
                 <div class="job-skills">
-                    ${job.requiredSkills ? job.requiredSkills.map(skill => `<span class="skill-tag">${skill}</span>`).join('') : 'No specific skills listed'}
+                    ${job.requiredSkills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
                 </div>
             </div>
+            ` : ''}
 
             <div class="job-detail-section">
                 <h4>Job Details</h4>
@@ -553,11 +723,13 @@ class BrowseJobs {
                 ${job.contactEmail ? `<p><strong>Contact Email:</strong> ${job.contactEmail}</p>` : ''}
             </div>
 
-            ${job.benefits ? `
+            ${job.benefits && job.benefits.length > 0 ? `
             <div class="job-detail-section">
                 <h4>Benefits</h4>
                 <ul>
-                    ${job.benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                    ${Array.isArray(job.benefits) ? 
+                      job.benefits.map(benefit => `<li>${benefit}</li>`).join('') : 
+                      `<li>${job.benefits}</li>`}
                 </ul>
             </div>
             ` : ''}
@@ -570,7 +742,10 @@ class BrowseJobs {
             return;
         }
 
-        if (!this.currentJobApplication) return;
+        if (!this.currentJobApplication) {
+            this.showToast('No job selected', 'error');
+            return;
+        }
 
         document.getElementById('applyJobTitle').textContent = this.currentJobApplication.title;
         document.getElementById('applicationMessage').value = '';
@@ -606,7 +781,7 @@ class BrowseJobs {
                 status: 'pending',
                 coverLetter: applicationMessage,
                 resumeAttached: document.getElementById('attachResume').checked,
-                employerId: this.currentJobApplication.employerId
+                employerId: this.currentJobApplication.employerId || 'unknown'
             });
 
             this.showToast('Application submitted successfully!', 'success');
@@ -701,6 +876,7 @@ class BrowseJobs {
             window.location.href = 'login.html';
         } catch (error) {
             console.error('Error signing out:', error);
+            this.showToast('Error signing out', 'error');
         }
     }
 
@@ -713,7 +889,7 @@ class BrowseJobs {
             'internship': 'Internship',
             'remote': 'Remote'
         };
-        return types[type] || type;
+        return types[type] || type || 'Full-time';
     }
 
     formatCategory(category) {
@@ -729,11 +905,11 @@ class BrowseJobs {
             'business': 'Business',
             'other': 'Other'
         };
-        return categories[category] || category;
+        return categories[category] || category || 'Other';
     }
 
     formatSalary(salary) {
-        if (!salary) return 'Negotiable';
+        if (!salary || salary === 0) return 'Negotiable';
         return new Intl.NumberFormat('en-UG', {
             style: 'currency',
             currency: 'UGX',
@@ -742,6 +918,7 @@ class BrowseJobs {
     }
 
     formatDate(date) {
+        if (!date) return 'Unknown date';
         return new Date(date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -750,6 +927,7 @@ class BrowseJobs {
     }
 
     isDeadlineClose(deadline) {
+        if (!deadline) return false;
         const now = new Date();
         const deadlineDate = new Date(deadline);
         const diffTime = deadlineDate - now;
