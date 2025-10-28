@@ -215,6 +215,7 @@ class AppliedJobs {
             
             this.applyFilters();
             this.renderApplications();
+            this.updateStats();
             
         } catch (error) {
             console.error('Error loading applications:', error);
@@ -456,6 +457,8 @@ class AppliedJobs {
         const statusMap = {
             'pending': 'Under Review',
             'reviewed': 'Under Review',
+            'shortlisted': 'Shortlisted',
+            'interview': 'Interview Stage',
             'accepted': 'Accepted',
             'rejected': 'Not Selected',
             'withdrawn': 'Withdrawn'
@@ -672,6 +675,26 @@ class AppliedJobs {
                     </div>
                     ` : ''}
                     
+                    ${application.status === 'shortlisted' ? `
+                    <div class="timeline-item success">
+                        <div class="timeline-date">Recently</div>
+                        <div class="timeline-content">
+                            <strong>Application Shortlisted</strong>
+                            <p>Great news! Your application has been shortlisted by the employer.</p>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${application.status === 'interview' ? `
+                    <div class="timeline-item success">
+                        <div class="timeline-date">Recently</div>
+                        <div class="timeline-content">
+                            <strong>Interview Stage</strong>
+                            <p>Your application has progressed to the interview stage.</p>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
                     ${application.status === 'accepted' ? `
                     <div class="timeline-item success">
                         <div class="timeline-date">Recently</div>
@@ -750,6 +773,26 @@ class AppliedJobs {
                 </div>
                 ` : ''}
 
+                ${application.status === 'shortlisted' ? `
+                <div class="timeline-event success">
+                    <div class="event-date">Recently</div>
+                    <div class="event-title">Application Shortlisted</div>
+                    <div class="event-description">
+                        Great news! Your application has been shortlisted. The employer is interested in your profile and may contact you for next steps.
+                    </div>
+                </div>
+                ` : ''}
+
+                ${application.status === 'interview' ? `
+                <div class="timeline-event success">
+                    <div class="event-date">Recently</div>
+                    <div class="event-title">Interview Stage</div>
+                    <div class="event-description">
+                        Your application has progressed to the interview stage. The employer will contact you to schedule an interview.
+                    </div>
+                </div>
+                ` : ''}
+
                 ${application.status === 'accepted' ? `
                 <div class="timeline-event success">
                     <div class="event-date">Recently</div>
@@ -777,10 +820,11 @@ class AppliedJobs {
                     <div class="event-description">
                         <strong>Typical Hiring Process:</strong><br>
                         1. Application Review (3-7 days)<br>
-                        2. Phone Screening (if applicable)<br>
-                        3. Interviews (1-3 rounds)<br>
-                        4. Assessment/Test (if required)<br>
-                        5. Job Offer<br><br>
+                        2. Shortlisting<br>
+                        3. Phone Screening (if applicable)<br>
+                        4. Interviews (1-3 rounds)<br>
+                        5. Assessment/Test (if required)<br>
+                        6. Job Offer<br><br>
                         If you don't hear back within 2 weeks, consider following up with the employer.
                     </div>
                 </div>
@@ -955,8 +999,12 @@ class AppliedJobs {
         const pendingApplications = this.applications.filter(app => 
             app.status === 'pending' || app.status === 'reviewed'
         ).length;
-        const shortlistedApplications = this.applications.filter(app => app.status === 'accepted').length;
-        const interviewApplications = this.applications.filter(app => app.status === 'interview').length;
+        const shortlistedApplications = this.applications.filter(app => 
+            app.status === 'shortlisted'  // FIXED: Now correctly counting shortlisted applications
+        ).length;
+        const interviewApplications = this.applications.filter(app => 
+            app.status === 'interview'
+        ).length;
         const rejectedApplications = this.applications.filter(app => 
             app.status === 'rejected' || app.status === 'withdrawn'
         ).length;
@@ -966,6 +1014,8 @@ class AppliedJobs {
         document.getElementById('shortlistedApplicationsCount').textContent = shortlistedApplications;
         document.getElementById('interviewApplicationsCount').textContent = interviewApplications;
         document.getElementById('rejectedApplicationsCount').textContent = rejectedApplications;
+
+        console.log('Shortlisted applications count:', shortlistedApplications);
     }
 
     bindEvents() {

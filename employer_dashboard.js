@@ -36,6 +36,7 @@ class EmployerDashboard {
         this.currentUser = null;
         this.companyData = null;
         this.jobs = [];
+        this.potentialCandidatesCount = 0;
         this.init();
     }
 
@@ -52,6 +53,7 @@ class EmployerDashboard {
                 console.log('User authenticated:', user.uid);
                 await this.loadCompanyData();
                 await this.loadJobPostings();
+                await this.calculatePotentialCandidatesCount();
                 this.updateStats();
             } else {
                 window.location.href = 'login.html';
@@ -173,6 +175,37 @@ class EmployerDashboard {
         } catch (error) {
             console.error('Error loading job postings:', error);
             this.showJobsErrorState(jobsList, error);
+        }
+    }
+
+    async calculatePotentialCandidatesCount() {
+        try {
+            let totalPotentialCandidates = 0;
+            
+            for (const job of this.jobs) {
+                const seekersQuery = query(collection(db, 'users'), where('userType', '==', 'seeker'));
+                const seekersSnapshot = await getDocs(seekersQuery);
+                
+                let jobPotentialCandidates = 0;
+                
+                for (const seekerDoc of seekersSnapshot.docs) {
+                    const seeker = { id: seekerDoc.id, ...seekerDoc.data() };
+                    const matchScore = this.calculateMatchScore(job, seeker);
+                    
+                    if (matchScore > 0.3) {
+                        jobPotentialCandidates++;
+                    }
+                }
+                
+                totalPotentialCandidates += jobPotentialCandidates;
+            }
+            
+            this.potentialCandidatesCount = totalPotentialCandidates;
+            this.updateStats();
+            
+        } catch (error) {
+            console.error('Error calculating potential candidates:', error);
+            this.potentialCandidatesCount = 0;
         }
     }
 
@@ -464,6 +497,7 @@ class EmployerDashboard {
         let score = 0;
         let totalFactors = 0;
 
+        // Location match
         if (job.location && seeker.preferredLocation) {
             totalFactors++;
             if (job.location.toLowerCase().includes(seeker.preferredLocation.toLowerCase()) || 
@@ -472,14 +506,18 @@ class EmployerDashboard {
             }
         }
 
+        // Salary match
         if (job.salary && seeker.desiredSalary) {
             totalFactors++;
             const jobSalary = this.extractSalary(job.salary);
-            if (jobSalary && seeker.desiredSalary >= jobSalary.min && seeker.desiredSalary <= jobSalary.max) {
+            const desiredSalary = parseInt(seeker.desiredSalary) || 0;
+            
+            if (jobSalary && desiredSalary >= jobSalary.min && desiredSalary <= jobSalary.max) {
                 score += 0.3;
             }
         }
 
+        // Job type match
         if (job.type && seeker.preferredJobType) {
             totalFactors++;
             if (job.type === seeker.preferredJobType) {
@@ -487,10 +525,18 @@ class EmployerDashboard {
             }
         }
 
-        if (job.category && seeker.preferredIndustry) {
+        // Skills match
+        if (job.requiredSkills && seeker.skills) {
             totalFactors++;
-            if (job.category === seeker.preferredIndustry) {
-                score += 0.2;
+            const jobSkills = job.requiredSkills.map(skill => skill.toLowerCase());
+            const seekerSkills = seeker.skills.map(skill => skill.toLowerCase());
+            
+            const matchingSkills = jobSkills.filter(skill => 
+                seekerSkills.some(seekerSkill => seekerSkill.includes(skill) || skill.includes(seekerSkill))
+            );
+            
+            if (matchingSkills.length > 0) {
+                score += (matchingSkills.length / jobSkills.length) * 0.2;
             }
         }
 
@@ -498,14 +544,22 @@ class EmployerDashboard {
     }
 
     extractSalary(salaryString) {
+        if (!salaryString) return null;
+        
+        // Handle different salary formats
         const numbers = salaryString.match(/\d+/g);
         if (numbers && numbers.length >= 2) {
             return { min: parseInt(numbers[0]), max: parseInt(numbers[1]) };
+        } else if (numbers && numbers.length === 1) {
+            return { min: parseInt(numbers[0]), max: parseInt(numbers[0]) * 1.5 };
         }
         return null;
     }
 
     createCandidateCardHTML(candidate) {
+        const skills = candidate.skills || [];
+        const displaySkills = skills.length > 0 ? skills.slice(0, 5) : ['No skills listed'];
+        
         return `
             <div class="candidate-card">
                 <div class="candidate-header">
@@ -513,9 +567,10 @@ class EmployerDashboard {
                     <div class="match-score">${candidate.matchScore}% Match</div>
                 </div>
                 <div class="candidate-skills">
-                    ${(candidate.skills || []).slice(0, 5).map(skill => 
+                    ${displaySkills.map(skill => 
                         `<span class="skill-tag">${skill}</span>`
                     ).join('')}
+                    ${skills.length > 5 ? `<span class="skill-tag">+${skills.length - 5} more</span>` : ''}
                 </div>
                 <div class="candidate-meta">
                     <div><i class="fas fa-map-marker-alt"></i> ${candidate.preferredLocation || 'Not specified'}</div>
@@ -524,10 +579,10 @@ class EmployerDashboard {
                 </div>
                 <div class="candidate-actions">
                     <button class="btn-view-profile" onclick="employerDashboard.viewCandidateProfile('${candidate.id}')">
-                        View Profile
+                        <i class="fas fa-eye"></i> View Profile
                     </button>
                     <button class="btn-contact" onclick="employerDashboard.contactCandidate('${candidate.id}')">
-                        Contact
+                        <i class="fas fa-envelope"></i> Contact
                     </button>
                 </div>
             </div>
@@ -548,7 +603,7 @@ class EmployerDashboard {
         const totalApplicants = this.jobs.reduce((sum, job) => sum + (job.applicantCount || 0), 0);
         document.getElementById('totalApplicantsCount').textContent = totalApplicants;
         
-        document.getElementById('potentialMatchesCount').textContent = this.jobs.length * 3;
+        document.getElementById('potentialMatchesCount').textContent = this.potentialCandidatesCount;
     }
 
     bindEvents() {
@@ -577,6 +632,194 @@ class EmployerDashboard {
             e.preventDefault();
             this.handleLogout();
         });
+
+        // Add event listener for "View All Applicants"
+        document.getElementById('viewAllApplicants').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleViewAllApplicants();
+        });
+    }
+
+    async handleViewAllApplicants() {
+        try {
+            // Show loading state
+            this.showToast('Loading applicants...', 'info');
+            
+            // Get all jobs for this employer
+            const jobsQuery = query(
+                collection(db, 'jobs'),
+                where('employerId', '==', this.currentUser.uid)
+            );
+            
+            const jobsSnapshot = await getDocs(jobsQuery);
+            const jobIds = jobsSnapshot.docs.map(doc => doc.id);
+            
+            if (jobIds.length === 0) {
+                this.showToast('No jobs found', 'info');
+                return;
+            }
+            
+            // Get all applications for these jobs
+            const applications = [];
+            for (const jobId of jobIds) {
+                const applicationsQuery = query(
+                    collection(db, 'applications'),
+                    where('jobId', '==', jobId)
+                );
+                const applicationsSnapshot = await getDocs(applicationsQuery);
+                
+                applicationsSnapshot.forEach(doc => {
+                    applications.push({ id: doc.id, ...doc.data(), jobId });
+                });
+            }
+            
+            if (applications.length === 0) {
+                this.showToast('No applicants found', 'info');
+                return;
+            }
+            
+            // Get job details and seeker details for each application
+            const applicantsWithDetails = [];
+            
+            for (const application of applications) {
+                // Get job details
+                const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
+                const job = jobDoc.exists() ? jobDoc.data() : { title: 'Unknown Job' };
+                
+                // Get seeker details
+                const seekerDoc = await getDoc(doc(db, 'users', application.seekerId));
+                const seeker = seekerDoc.exists() ? seekerDoc.data() : { fullName: 'Unknown Seeker' };
+                
+                applicantsWithDetails.push({
+                    ...application,
+                    jobTitle: job.title,
+                    seekerName: seeker.fullName,
+                    seekerEmail: seeker.email,
+                    seekerPhone: seeker.phone,
+                    seekerResume: seeker.resumeUrl,
+                    seekerSkills: seeker.skills || []
+                });
+            }
+            
+            // Show applicants in a modal
+            this.showApplicantsModal(applicantsWithDetails);
+            
+        } catch (error) {
+            console.error('Error loading applicants:', error);
+            this.showToast('Error loading applicants', 'error');
+        }
+    }
+
+    showApplicantsModal(applicants) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        
+        let applicantsHTML = '';
+        applicants.forEach(applicant => {
+            applicantsHTML += `
+                <div class="applicant-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                    <div class="applicant-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div>
+                            <h4 style="margin: 0; color: #2c3e50;">${applicant.seekerName || 'Unknown Seeker'}</h4>
+                            <p style="margin: 5px 0; color: #3498db; font-weight: 500;">Applied for: ${applicant.jobTitle}</p>
+                        </div>
+                        <div style="color: #95a5a6; font-size: 0.9rem;">
+                            ${applicant.appliedAt?.toDate ? applicant.appliedAt.toDate().toLocaleDateString() : 'Unknown date'}
+                        </div>
+                    </div>
+                    
+                    <div class="applicant-contact" style="margin-bottom: 10px;">
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            ${applicant.seekerEmail ? `<div><i class="fas fa-envelope"></i> ${applicant.seekerEmail}</div>` : ''}
+                            ${applicant.seekerPhone ? `<div><i class="fas fa-phone"></i> ${applicant.seekerPhone}</div>` : ''}
+                        </div>
+                    </div>
+                    
+                    ${applicant.coverLetter ? `
+                    <div class="cover-letter" style="margin-bottom: 15px;">
+                        <h5 style="margin: 0 0 8px 0; color: #2c3e50;">Cover Letter</h5>
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 3px solid #3498db;">
+                            ${applicant.coverLetter}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${applicant.seekerSkills.length > 0 ? `
+                    <div class="applicant-skills" style="margin-bottom: 15px;">
+                        <h5 style="margin: 0 0 8px 0; color: #2c3e50;">Skills</h5>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${applicant.seekerSkills.map(skill => 
+                                `<span style="background: #3498db; color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.8rem;">${skill}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="applicant-actions" style="display: flex; gap: 10px;">
+                        ${applicant.seekerResume ? `
+                        <button class="btn-view-resume" onclick="employerDashboard.viewResume('${applicant.seekerResume}')" 
+                                style="background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-file-pdf"></i> View Resume
+                        </button>
+                        ` : ''}
+                        
+                        <button class="btn-contact-applicant" onclick="employerDashboard.contactApplicant('${applicant.seekerId}', '${applicant.seekerEmail}')"
+                                style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-envelope"></i> Contact
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3>All Applicants (${applicants.length})</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    ${applicants.length > 0 ? applicantsHTML : `
+                        <div style="text-align: center; padding: 40px; color: #95a5a6;">
+                            <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                            <h4>No Applicants Found</h4>
+                            <p>No one has applied to your jobs yet.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Close modal events
+        const closeBtn = modal.querySelector('.close-modal');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
+    viewResume(resumeUrl) {
+        if (resumeUrl) {
+            window.open(resumeUrl, '_blank');
+        } else {
+            this.showToast('Resume not available', 'error');
+        }
+    }
+
+    contactApplicant(seekerId, email) {
+        if (email) {
+            window.open(`mailto:${email}?subject=Regarding Your Job Application`, '_blank');
+        } else {
+            this.showToast('Contact information not available', 'error');
+        }
     }
 
     addTouchEvents() {
@@ -596,7 +839,12 @@ class EmployerDashboard {
     handleStatCardClick(card) {
         this.addClickFeedback(card);
         const statType = card.querySelector('p').textContent;
-        this.showToast(`No ${statType.toLowerCase()} data available yet`, 'info');
+        
+        if (statType === 'Potential Matches') {
+            this.showToast(`You have ${this.potentialCandidatesCount} potential candidates across all jobs`, 'info');
+        } else {
+            this.showToast(`No ${statType.toLowerCase()} data available yet`, 'info');
+        }
     }
 
     handlePostJobClick() {
