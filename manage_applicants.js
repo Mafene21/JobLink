@@ -147,30 +147,27 @@ class ManageApplicants {
                 const applicationsSnapshot = await getDocs(applicationsQuery);
                 
                 for (const appDoc of applicationsSnapshot.docs) {
+                    const applicationData = appDoc.data();
+                    console.log('Raw application data:', applicationData);
+                    
                     const application = { 
                         id: appDoc.id, 
-                        ...appDoc.data(),
+                        ...applicationData,
                         jobTitle: job.title,
-                        jobType: job.type,
+                        jobType: job.jobType,
                         jobLocation: job.location,
-                        appliedAt: appDoc.data().appliedAt?.toDate ? appDoc.data().appliedAt.toDate() : new Date(appDoc.data().appliedAt || new Date())
+                        appliedAt: applicationData.appliedDate?.toDate ? applicationData.appliedDate.toDate() : new Date(applicationData.appliedDate || new Date())
                     };
                     
-                    // Load applicant data
-                    try {
-                        const applicantDoc = await getDoc(doc(db, 'users', application.applicantId));
-                        if (applicantDoc.exists()) {
-                            application.applicant = applicantDoc.data();
-                        }
-                    } catch (error) {
-                        console.error('Error loading applicant data:', error);
-                    }
+                    // Load applicant data - try multiple collection names
+                    application.applicant = await this.loadApplicantData(application.seekerId || application.applicantId);
                     
                     applications.push(application);
                 }
             }
             
             this.applications = applications;
+            console.log('All loaded applications:', this.applications);
             this.applyFilters();
             this.renderApplicants();
             
@@ -180,14 +177,73 @@ class ManageApplicants {
         }
     }
 
+    async loadApplicantData(applicantId) {
+        if (!applicantId) {
+            console.log('No applicant ID provided');
+            return null;
+        }
+
+        try {
+            console.log('Loading applicant data for ID:', applicantId);
+            
+            // Try different collection names
+            const collections = ['seekers', 'users', 'applicants'];
+            let applicantData = null;
+            
+            for (const collectionName of collections) {
+                try {
+                    const applicantDoc = await getDoc(doc(db, collectionName, applicantId));
+                    if (applicantDoc.exists()) {
+                        applicantData = applicantDoc.data();
+                        console.log(`Found applicant in ${collectionName}:`, applicantData);
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`No applicant found in ${collectionName}:`, error.message);
+                }
+            }
+            
+            if (!applicantData) {
+                console.log('Applicant not found in any collection');
+                // Create a fallback applicant object
+                applicantData = {
+                    fullName: 'Unknown Applicant',
+                    email: 'No email available',
+                    title: 'Not specified',
+                    location: 'Not specified',
+                    experience: 'Not specified',
+                    skills: [],
+                    bio: 'No information available'
+                };
+            }
+            
+            return applicantData;
+            
+        } catch (error) {
+            console.error('Error loading applicant data:', error);
+            return {
+                fullName: 'Error Loading Applicant',
+                email: 'Error',
+                title: 'Error',
+                location: 'Error',
+                experience: 'Error',
+                skills: [],
+                bio: 'Error loading applicant information'
+            };
+        }
+    }
+
     applyFilters() {
         this.filteredApplications = this.applications.filter(application => {
+            const applicant = application.applicant || {};
+            
             // Search filter
             const searchTerm = this.filters.search.toLowerCase();
             const matchesSearch = !searchTerm || 
-                application.applicant?.fullName?.toLowerCase().includes(searchTerm) ||
-                application.applicant?.email?.toLowerCase().includes(searchTerm) ||
-                application.applicant?.skills?.some(skill => skill.toLowerCase().includes(searchTerm));
+                applicant.fullName?.toLowerCase().includes(searchTerm) ||
+                applicant.email?.toLowerCase().includes(searchTerm) ||
+                (applicant.skills && applicant.skills.some(skill => skill.toLowerCase().includes(searchTerm))) ||
+                application.jobTitle?.toLowerCase().includes(searchTerm);
 
             // Job filter
             const matchesJob = this.filters.job === 'all' || application.jobId === this.filters.job;
@@ -197,7 +253,7 @@ class ManageApplicants {
 
             // Experience filter
             const matchesExperience = this.filters.experience === 'all' || 
-                this.matchesExperienceLevel(application.applicant?.experience, this.filters.experience);
+                this.matchesExperienceLevel(applicant.experience, this.filters.experience);
 
             return matchesSearch && matchesJob && matchesStatus && matchesExperience;
         });
@@ -207,9 +263,16 @@ class ManageApplicants {
     }
 
     matchesExperienceLevel(experience, level) {
-        if (!experience) return false;
+        if (!experience || experience === 'Not specified') return false;
         
-        const years = parseInt(experience) || 0;
+        // Try to extract years from experience string
+        let years = 0;
+        if (typeof experience === 'number') {
+            years = experience;
+        } else if (typeof experience === 'string') {
+            const yearMatch = experience.match(/(\d+)/);
+            years = yearMatch ? parseInt(yearMatch[1]) : 0;
+        }
         
         switch (level) {
             case 'entry': return years <= 2;
@@ -268,17 +331,22 @@ class ManageApplicants {
         const cardClass = `applicant-card ${application.status || 'new'} ${isSelected ? 'selected' : ''}`;
         
         const appliedDate = this.formatDate(application.appliedAt);
-        const experience = applicant.experience ? `${applicant.experience} years` : 'Not specified';
+        const experience = this.getExperienceDisplay(applicant.experience);
+        const applicantName = applicant.fullName || 'Unknown Applicant';
+        const applicantTitle = applicant.title || applicant.professionalTitle || 'No title specified';
+        const applicantEmail = applicant.email || 'No email available';
+        const applicantLocation = applicant.location || 'Not specified';
+        const applicantSkills = applicant.skills || [];
 
         if (isList) {
             return `
                 <div class="${cardClass}" data-application-id="${application.id}">
                     <div class="applicant-main">
-                        <img src="${applicant.photoURL || 'https://via.placeholder.com/50x50?text=U'}" 
-                             alt="${applicant.fullName || 'Applicant'}" class="applicant-avatar">
+                        <img src="${applicant.profilePicture || applicant.photoURL || 'https://via.placeholder.com/50x50?text=U'}" 
+                             alt="${applicantName}" class="applicant-avatar">
                         <div class="applicant-info">
-                            <div class="applicant-name">${applicant.fullName || 'Unknown Applicant'}</div>
-                            <div class="applicant-title">${applicant.title || 'No title specified'}</div>
+                            <div class="applicant-name">${applicantName}</div>
+                            <div class="applicant-title">${applicantTitle}</div>
                             <div class="applicant-meta">
                                 <div class="applicant-meta-item">
                                     <i class="fas fa-briefcase"></i>
@@ -286,7 +354,7 @@ class ManageApplicants {
                                 </div>
                                 <div class="applicant-meta-item">
                                     <i class="fas fa-map-marker-alt"></i>
-                                    ${applicant.location || 'Not specified'}
+                                    ${applicantLocation}
                                 </div>
                                 <div class="applicant-meta-item">
                                     <i class="fas fa-clock"></i>
@@ -316,15 +384,15 @@ class ManageApplicants {
             <div class="${cardClass}" data-application-id="${application.id}">
                 <div class="applicant-header">
                     <div class="applicant-main">
-                        <img src="${applicant.photoURL || 'https://via.placeholder.com/60x60?text=U'}" 
-                             alt="${applicant.fullName || 'Applicant'}" class="applicant-avatar">
+                        <img src="${applicant.profilePicture || applicant.photoURL || 'https://via.placeholder.com/60x60?text=U'}" 
+                             alt="${applicantName}" class="applicant-avatar">
                         <div class="applicant-basic-info">
-                            <div class="applicant-name">${applicant.fullName || 'Unknown Applicant'}</div>
-                            <div class="applicant-title">${applicant.title || 'No title specified'}</div>
+                            <div class="applicant-name">${applicantName}</div>
+                            <div class="applicant-title">${applicantTitle}</div>
                             <div class="applicant-meta">
                                 <div class="applicant-meta-item">
                                     <i class="fas fa-envelope"></i>
-                                    ${applicant.email || 'No email'}
+                                    ${applicantEmail}
                                 </div>
                                 <div class="applicant-meta-item">
                                     <i class="fas fa-briefcase"></i>
@@ -345,7 +413,7 @@ class ManageApplicants {
                     </div>
                     <div class="applicant-meta-item">
                         <i class="fas fa-map-marker-alt"></i>
-                        ${applicant.location || 'Location not specified'}
+                        ${applicantLocation}
                     </div>
                     <div class="applicant-meta-item">
                         <i class="fas fa-clock"></i>
@@ -353,12 +421,12 @@ class ManageApplicants {
                     </div>
                 </div>
 
-                ${applicant.skills && applicant.skills.length > 0 ? `
+                ${applicantSkills.length > 0 ? `
                 <div class="applicant-skills">
-                    ${applicant.skills.slice(0, 4).map(skill => 
+                    ${applicantSkills.slice(0, 4).map(skill => 
                         `<span class="skill-tag">${skill}</span>`
                     ).join('')}
-                    ${applicant.skills.length > 4 ? `<span class="skill-tag">+${applicant.skills.length - 4} more</span>` : ''}
+                    ${applicantSkills.length > 4 ? `<span class="skill-tag">+${applicantSkills.length - 4} more</span>` : ''}
                 </div>
                 ` : ''}
 
@@ -378,6 +446,16 @@ class ManageApplicants {
                 </div>
             </div>
         `;
+    }
+
+    getExperienceDisplay(experience) {
+        if (!experience || experience === 'Not specified') return 'Not specified';
+        if (typeof experience === 'number') return `${experience} years`;
+        if (typeof experience === 'string') {
+            if (experience.includes('years')) return experience;
+            return `${experience} years`;
+        }
+        return 'Not specified';
     }
 
     formatDate(date) {
@@ -452,17 +530,28 @@ class ManageApplicants {
     createApplicantDetailsHTML(application) {
         const applicant = application.applicant || {};
         const statusClass = `status-${application.status || 'new'}`;
+        
+        const applicantName = applicant.fullName || 'Unknown Applicant';
+        const applicantTitle = applicant.title || applicant.professionalTitle || 'No title specified';
+        const applicantEmail = applicant.email || 'Not specified';
+        const applicantPhone = applicant.phone || applicant.phoneNumber || 'Not specified';
+        const applicantLocation = applicant.location || 'Not specified';
+        const applicantExperience = this.getExperienceDisplay(applicant.experience);
+        const applicantEducation = applicant.education || applicant.highestEducation || 'Not specified';
+        const applicantBio = applicant.bio || applicant.about || 'No information available';
+        const applicantSkills = applicant.skills || [];
+        const applicantCurrentStatus = applicant.currentStatus || applicant.employmentStatus || 'Not specified';
 
         return `
             <div class="applicant-details">
                 <div class="detail-section">
                     <div class="applicant-header" style="border: none; margin: 0;">
                         <div class="applicant-main">
-                            <img src="${applicant.photoURL || 'https://via.placeholder.com/80x80?text=U'}" 
-                                 alt="${applicant.fullName}" class="applicant-avatar">
+                            <img src="${applicant.profilePicture || applicant.photoURL || 'https://via.placeholder.com/80x80?text=U'}" 
+                                 alt="${applicantName}" class="applicant-avatar">
                             <div class="applicant-basic-info">
-                                <div class="applicant-name">${applicant.fullName || 'Unknown Applicant'}</div>
-                                <div class="applicant-title">${applicant.title || 'No title specified'}</div>
+                                <div class="applicant-name">${applicantName}</div>
+                                <div class="applicant-title">${applicantTitle}</div>
                                 <span class="status-badge ${statusClass}">${application.status || 'new'}</span>
                             </div>
                         </div>
@@ -474,15 +563,15 @@ class ManageApplicants {
                     <div class="detail-grid">
                         <div class="detail-item">
                             <span class="detail-label">Email</span>
-                            <span class="detail-value">${applicant.email || 'Not specified'}</span>
+                            <span class="detail-value">${applicantEmail}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Phone</span>
-                            <span class="detail-value">${applicant.phone || 'Not specified'}</span>
+                            <span class="detail-value">${applicantPhone}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Location</span>
-                            <span class="detail-value">${applicant.location || 'Not specified'}</span>
+                            <span class="detail-value">${applicantLocation}</span>
                         </div>
                     </div>
                 </div>
@@ -492,36 +581,34 @@ class ManageApplicants {
                     <div class="detail-grid">
                         <div class="detail-item">
                             <span class="detail-label">Experience</span>
-                            <span class="detail-value">${applicant.experience ? applicant.experience + ' years' : 'Not specified'}</span>
+                            <span class="detail-value">${applicantExperience}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Education</span>
-                            <span class="detail-value">${applicant.education || 'Not specified'}</span>
+                            <span class="detail-value">${applicantEducation}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Current Status</span>
-                            <span class="detail-value">${applicant.currentStatus || 'Not specified'}</span>
+                            <span class="detail-value">${applicantCurrentStatus}</span>
                         </div>
                     </div>
                 </div>
 
-                ${applicant.skills && applicant.skills.length > 0 ? `
+                ${applicantSkills.length > 0 ? `
                 <div class="detail-section">
                     <h4>Skills</h4>
                     <div class="skills-container">
-                        ${applicant.skills.map(skill => 
+                        ${applicantSkills.map(skill => 
                             `<span class="skill-tag">${skill}</span>`
                         ).join('')}
                     </div>
                 </div>
                 ` : ''}
 
-                ${applicant.bio ? `
                 <div class="detail-section">
                     <h4>About</h4>
-                    <p style="line-height: 1.6;">${applicant.bio}</p>
+                    <p style="line-height: 1.6; white-space: pre-wrap;">${applicantBio}</p>
                 </div>
-                ` : ''}
 
                 <div class="detail-section">
                     <h4>Application Details</h4>
@@ -553,11 +640,11 @@ class ManageApplicants {
                 </div>
                 ` : ''}
 
-                ${application.coverLetter ? `
+                ${application.coverLetter || application.applicationMessage ? `
                 <div class="detail-section">
                     <h4>Cover Letter</h4>
                     <div style="background: var(--light-gray); padding: 15px; border-radius: 8px;">
-                        <p style="line-height: 1.6; white-space: pre-wrap;">${application.coverLetter}</p>
+                        <p style="line-height: 1.6; white-space: pre-wrap;">${application.coverLetter || application.applicationMessage}</p>
                     </div>
                 </div>
                 ` : ''}
@@ -618,9 +705,12 @@ class ManageApplicants {
         try {
             const updateData = {
                 status: newStatus,
-                updatedAt: Timestamp.now(),
-                notes: notes || null
+                updatedAt: Timestamp.now()
             };
+
+            if (notes) {
+                updateData.notes = notes;
+            }
 
             if (newStatus === 'interview' && interviewDate) {
                 updateData.interviewDate = Timestamp.fromDate(new Date(interviewDate));
@@ -635,7 +725,9 @@ class ManageApplicants {
             const application = this.applications.find(app => app.id === applicationId);
             if (application) {
                 application.status = newStatus;
-                application.notes = notes;
+                if (notes) {
+                    application.notes = notes;
+                }
                 if (interviewDate) {
                     application.interviewDate = new Date(interviewDate);
                 }
@@ -813,12 +905,6 @@ class ManageApplicants {
         // Clear filters
         document.getElementById('clearFilters').addEventListener('click', () => {
             this.clearFilters();
-        });
-
-        // Apply filters
-        document.getElementById('applyFilters').addEventListener('click', () => {
-            this.applyFilters();
-            this.renderApplicants();
         });
 
         // View toggle

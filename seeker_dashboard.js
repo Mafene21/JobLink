@@ -421,14 +421,20 @@ class SeekerDashboard {
                 .where('status', '==', 'active')
                 .get();
 
+            console.log('Jobs snapshot:', jobsSnapshot.size, 'jobs found');
+
             this.jobsData = [];
             jobsSnapshot.forEach(doc => {
                 const jobData = doc.data();
+                console.log('Job data:', doc.id, jobData); // Debug log
+                
                 this.jobsData.push({
                     id: doc.id,
                     ...jobData
                 });
             });
+
+            console.log('Processed jobs data:', this.jobsData); // Debug log
 
             // Filter and score jobs based on user profile
             await this.calculateJobMatches();
@@ -449,15 +455,49 @@ class SeekerDashboard {
         }
 
         this.filteredJobs = this.jobsData.map(job => {
+            // Debug: Check company data
+            console.log('Processing job:', job.id, 'Company data:', {
+                company: job.company,
+                companyName: job.companyName,
+                employerName: job.employerName,
+                employer: job.employer
+            });
+
+            // Try different field names for company
+            const companyName = this.getCompanyName(job);
+            const companyLogo = this.getCompanyLogo(job);
+
             const matchScore = this.calculateMatchScore(job);
             return {
                 ...job,
+                company: companyName,
+                companyLogo: companyLogo,
                 matchScore: matchScore
             };
-        }).filter(job => job.matchScore >= 30) // Show jobs with at least 30% match
-          .sort((a, b) => b.matchScore - a.matchScore); // Sort by match score
+        }).filter(job => job.matchScore >= 30)
+          .sort((a, b) => b.matchScore - a.matchScore);
 
+        console.log('Filtered jobs with company data:', this.filteredJobs); // Debug log
         this.renderStats();
+    }
+
+    getCompanyName(job) {
+        // Try different possible field names for company name
+        return job.company || 
+               job.companyName || 
+               job.employerName || 
+               job.employer || 
+               job.postedByCompany ||
+               'Company not specified';
+    }
+
+    getCompanyLogo(job) {
+        // Try different possible field names for company logo
+        return job.companyLogo || 
+               job.logo || 
+               job.companyImage || 
+               job.employerLogo ||
+               `https://via.placeholder.com/50x50/3498db/ffffff?text=${this.getCompanyName(job).charAt(0).toUpperCase()}`;
     }
 
     calculateMatchScore(job) {
@@ -732,16 +772,31 @@ class SeekerDashboard {
                 </div>
             `;
         } else {
-            jobsFeed.innerHTML = this.filteredJobs.map(job => `
+            jobsFeed.innerHTML = this.filteredJobs.map(job => {
+                const companyName = this.getCompanyName(job);
+                const companyLogo = this.getCompanyLogo(job);
+                
+                return `
                 <div class="job-card" data-job-id="${job.id}">
                     <div class="job-card-header">
                         <div class="job-title-section">
-                            <h3>${job.title || 'No Title'}</h3>
-                            <p class="job-company">${job.company || 'No Company'}</p>
-                            <p class="job-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${job.location || 'Location not specified'}
-                            </p>
+                            <div class="company-logo-container">
+                                <img src="${companyLogo}" 
+                                     alt="${companyName} Logo" 
+                                     class="company-logo"
+                                     onerror="this.src='https://via.placeholder.com/50x50/3498db/ffffff?text=${companyName.charAt(0).toUpperCase()}'">
+                            </div>
+                            <div class="job-title-info">
+                                <h3>${job.title || 'No Title'}</h3>
+                                <p class="job-company">
+                                    <i class="fas fa-building"></i>
+                                    ${companyName}
+                                </p>
+                                <p class="job-location">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    ${job.location || 'Location not specified'}
+                                </p>
+                            </div>
                         </div>
                         <div class="job-match-score">
                             ${job.matchScore}% Match
@@ -776,7 +831,8 @@ class SeekerDashboard {
                         </button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         if (matchCount) {
@@ -871,6 +927,8 @@ class SeekerDashboard {
         if (!searchTerm.trim()) {
             this.filteredJobs = [...this.jobsData.map(job => ({
                 ...job,
+                company: this.getCompanyName(job),
+                companyLogo: this.getCompanyLogo(job),
                 matchScore: this.calculateMatchScore(job)
             })).filter(job => job.matchScore >= 30)];
         } else {
@@ -878,6 +936,8 @@ class SeekerDashboard {
             this.filteredJobs = this.jobsData
                 .map(job => ({
                     ...job,
+                    company: this.getCompanyName(job),
+                    companyLogo: this.getCompanyLogo(job),
                     matchScore: this.calculateMatchScore(job)
                 }))
                 .filter(job => 
@@ -897,12 +957,16 @@ class SeekerDashboard {
         if (filterType === 'all') {
             this.filteredJobs = [...this.jobsData.map(job => ({
                 ...job,
+                company: this.getCompanyName(job),
+                companyLogo: this.getCompanyLogo(job),
                 matchScore: this.calculateMatchScore(job)
             })).filter(job => job.matchScore >= 30)];
         } else {
             this.filteredJobs = this.jobsData
                 .map(job => ({
                     ...job,
+                    company: this.getCompanyName(job),
+                    companyLogo: this.getCompanyLogo(job),
                     matchScore: this.calculateMatchScore(job)
                 }))
                 .filter(job => job.matchScore >= 30 && job.jobType === filterType);
@@ -937,15 +1001,26 @@ class SeekerDashboard {
         const jobDetailsContent = document.getElementById('jobDetailsContent');
         const jobDetailsTitle = document.getElementById('jobDetailsTitle');
 
+        const companyName = this.getCompanyName(job);
+        const companyLogo = this.getCompanyLogo(job);
+
         if (jobDetailsTitle) jobDetailsTitle.textContent = job.title || 'Job Details';
         
         if (jobDetailsContent) {
             jobDetailsContent.innerHTML = `
-                <div class="job-details-meta">
-                    <div class="job-detail-item">
-                        <i class="fas fa-building"></i>
-                        <span>${job.company || 'No Company'}</span>
+                <div class="job-header-with-logo">
+                    <div class="company-logo-large">
+                        <img src="${companyLogo}" 
+                             alt="${companyName} Logo"
+                             onerror="this.src='https://via.placeholder.com/60x60/3498db/ffffff?text=${companyName.charAt(0).toUpperCase()}'">
                     </div>
+                    <div class="job-header-info">
+                        <h4>${job.title || 'No Title'}</h4>
+                        <p class="company-name-large">${companyName}</p>
+                    </div>
+                </div>
+                
+                <div class="job-details-meta">
                     <div class="job-detail-item">
                         <i class="fas fa-map-marker-alt"></i>
                         <span>${job.location || 'Location not specified'}</span>
@@ -1029,6 +1104,7 @@ class SeekerDashboard {
         const job = this.jobsData.find(j => j.id === jobId);
         if (!job) return;
 
+        const companyName = this.getCompanyName(job);
         const modalJobTitle = document.getElementById('modalJobTitle');
         const applicationModal = document.getElementById('applicationModal');
 
@@ -1066,6 +1142,8 @@ class SeekerDashboard {
                 throw new Error('Job not found');
             }
             
+            const companyName = this.getCompanyName(job);
+            
             let resumeUrl = null;
             let resumeFileName = null;
 
@@ -1083,7 +1161,7 @@ class SeekerDashboard {
                 seekerId: this.currentUser.uid,
                 jobId: this.currentJobApplication,
                 jobTitle: job.title || 'Unknown Position',
-                companyName: job.company || 'Unknown Company',
+                companyName: companyName,
                 appliedDate: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'pending',
                 coverLetter: message || '',

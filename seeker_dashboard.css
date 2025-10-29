@@ -582,7 +582,37 @@ body {
   margin-bottom: 15px;
 }
 
-.job-title-section h3 {
+.job-title-section {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+}
+
+.company-logo-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-right: 15px;
+  flex-shrink: 0;
+  border: 1px solid var(--light);
+  background: var(--light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.job-title-info {
+  flex: 1;
+}
+
+.job-title-info h3 {
   color: var(--secondary);
   margin-bottom: 5px;
   font-size: 1.2rem;
@@ -592,6 +622,14 @@ body {
   color: var(--primary);
   font-weight: 600;
   margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.job-company i {
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 .job-location {
@@ -622,6 +660,15 @@ body {
   color: var(--success);
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.job-experience {
+  background: rgba(243, 156, 18, 0.1);
+  color: var(--warning);
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .job-match-score {
@@ -655,6 +702,15 @@ body {
   color: var(--dark);
   padding: 4px 10px;
   border-radius: 15px;
+  font-size: 0.8rem;
+}
+
+.job-match-breakdown {
+  margin-bottom: 15px;
+}
+
+.job-match-breakdown small {
+  color: var(--gray);
   font-size: 0.8rem;
 }
 
@@ -1146,6 +1202,51 @@ body {
   font-size: 1.3rem;
 }
 
+.job-header-with-logo {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--light);
+}
+
+.company-logo-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-right: 20px;
+  flex-shrink: 0;
+  border: 1px solid var(--light);
+  background: var(--light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-logo-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.job-header-info {
+  flex: 1;
+}
+
+.job-header-info h4 {
+  color: var(--secondary);
+  margin-bottom: 5px;
+  font-size: 1.4rem;
+}
+
+.company-name-large {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
 .job-details-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1403,6 +1504,23 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* File Upload Note */
+.file-upload-note {
+  color: var(--gray);
+  font-size: 0.8rem;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.optional-badge {
+  background: var(--light);
+  color: var(--gray);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  margin-left: 5px;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .stats-grid {
@@ -1453,6 +1571,19 @@ body {
     grid-template-columns: 1fr;
   }
   
+  .job-card-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .job-title-section {
+    width: 100%;
+  }
+  
+  .job-match-score {
+    align-self: flex-start;
+  }
+  
   .empty-actions {
     flex-direction: column;
     align-items: center;
@@ -1463,11 +1594,6 @@ body {
     width: 200px;
   }
   
-  .job-card-header {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
   .job-actions {
     flex-direction: column;
   }
@@ -1475,6 +1601,16 @@ body {
   .application-header {
     flex-direction: column;
     gap: 10px;
+  }
+  
+  .job-header-with-logo {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .company-logo-large {
+    margin-right: 0;
   }
   
   .prompt-content {
@@ -1537,21 +1673,15 @@ body {
   .modal-body {
     padding: 15px 20px;
   }
-}
-
-/* Add this to the existing CSS file */
-.file-upload-note {
-  color: var(--gray);
-  font-size: 0.8rem;
-  margin-top: 8px;
-  font-style: italic;
-}
-
-.optional-badge {
-  background: var(--light);
-  color: var(--gray);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  margin-left: 5px;
+  
+  .company-logo-container {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+  }
+  
+  .company-logo-large {
+    width: 50px;
+    height: 50px;
+  }
 }
