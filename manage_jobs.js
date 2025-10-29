@@ -58,7 +58,10 @@ class ManageJobs {
     async init() {
         await this.checkAuthState();
         this.bindEvents();
-        this.loadCompanyData();
+        // Load company data after auth state is confirmed
+        setTimeout(() => {
+            this.loadCompanyData();
+        }, 1000);
     }
 
     async checkAuthState() {
@@ -66,6 +69,7 @@ class ManageJobs {
             if (user) {
                 this.currentUser = user;
                 console.log('User authenticated:', user.uid);
+                console.log('User email:', user.email);
                 await this.loadJobs();
                 this.updateStats();
             } else {
@@ -76,32 +80,57 @@ class ManageJobs {
 
     async loadCompanyData() {
         try {
+            if (!this.currentUser) {
+                console.log('No current user found');
+                this.updateCompanyLogo();
+                return;
+            }
+
             console.log('Loading company data for user:', this.currentUser.uid);
             
             // Try multiple collection names for company data
-            const collections = ['companies', 'employers', 'users'];
+            const collections = ['companies', 'employers', 'users', 'employerProfiles'];
             let companyData = null;
+            let foundCollection = '';
             
             for (const collectionName of collections) {
                 try {
+                    console.log(`Checking collection: ${collectionName}`);
                     const companyDoc = await getDoc(doc(db, collectionName, this.currentUser.uid));
                     if (companyDoc.exists()) {
                         companyData = companyDoc.data();
+                        foundCollection = collectionName;
                         console.log(`Found company data in ${collectionName}:`, companyData);
                         break;
+                    } else {
+                        console.log(`No document found in ${collectionName} for user ${this.currentUser.uid}`);
                     }
                 } catch (error) {
-                    console.log(`No company data found in ${collectionName}:`, error.message);
+                    console.log(`Error accessing ${collectionName}:`, error.message);
                 }
             }
             
             if (companyData) {
                 this.companyData = companyData;
+                console.log(`Successfully loaded company data from ${foundCollection}`);
                 this.updateCompanyLogo();
             } else {
-                console.log('No company data found in any collection');
-                // Set default placeholder
-                this.updateCompanyLogo();
+                console.log('No company data found in any collection. Checking for company data in user document...');
+                // Try to get user data directly
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', this.currentUser.uid));
+                    if (userDoc.exists()) {
+                        this.companyData = userDoc.data();
+                        console.log('Found user data:', this.companyData);
+                        this.updateCompanyLogo();
+                    } else {
+                        console.log('No user data found either');
+                        this.updateCompanyLogo();
+                    }
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    this.updateCompanyLogo();
+                }
             }
             
         } catch (error) {
@@ -112,27 +141,42 @@ class ManageJobs {
 
     updateCompanyLogo() {
         const companyLogoNav = document.getElementById('companyLogoNav');
+        if (!companyLogoNav) {
+            console.log('Company logo nav element not found');
+            return;
+        }
+
+        console.log('Updating company logo with data:', this.companyData);
+        
         if (this.companyData) {
             // Try multiple possible field names for company logo
             const logoUrl = this.companyData.logoUrl || 
                            this.companyData.logo || 
                            this.companyData.companyLogo ||
                            this.companyData.profilePicture ||
-                           this.companyData.photoURL;
+                           this.companyData.photoURL ||
+                           this.companyData.imageUrl ||
+                           this.companyData.avatar;
             
-            if (logoUrl && logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
+            console.log('Logo URL found:', logoUrl);
+            
+            if (logoUrl && logoUrl.trim() !== '' && logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
                 companyLogoNav.src = logoUrl;
+                companyLogoNav.alt = this.companyData.companyName || this.companyData.name || 'Company Logo';
                 companyLogoNav.onerror = () => {
-                    companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
+                    console.log('Logo image failed to load, using placeholder');
+                    companyLogoNav.src = 'https://via.placeholder.com/32x32?text=LOGO';
                 };
-                console.log('Updated company logo:', logoUrl);
+                console.log('Company logo updated successfully');
             } else {
-                console.log('No valid company logo found, using placeholder');
-                companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
+                console.log('No valid logo URL found, using placeholder');
+                companyLogoNav.src = 'https://via.placeholder.com/32x32?text=LOGO';
+                companyLogoNav.alt = 'Company Logo Placeholder';
             }
         } else {
-            console.log('No company data available for logo');
-            companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
+            console.log('No company data available, using default placeholder');
+            companyLogoNav.src = 'https://via.placeholder.com/32x32?text=LOGO';
+            companyLogoNav.alt = 'Company Logo';
         }
     }
 
@@ -161,10 +205,10 @@ class ManageJobs {
             this.jobs = [];
             
             // Load jobs and their applicant counts
-            for (const doc of querySnapshot.docs) {
-                const jobData = doc.data();
+            for (const docSnap of querySnapshot.docs) {
+                const jobData = docSnap.data();
                 const job = { 
-                    id: doc.id, 
+                    id: docSnap.id, 
                     ...jobData,
                     createdAt: jobData.createdAt?.toDate ? jobData.createdAt.toDate() : new Date(jobData.createdAt || new Date())
                 };
@@ -579,6 +623,11 @@ class ManageJobs {
 
         // Set up modal close events
         this.setupModalCloseEvents(modal);
+
+        // Set edit button action
+        document.getElementById('editJobBtn').onclick = () => {
+            this.editJob(jobId);
+        };
     }
 
     setupModalCloseEvents(modal) {
@@ -680,8 +729,26 @@ class ManageJobs {
     }
 
     editJob(jobId) {
-        // Redirect to job posting page with edit parameter
-        window.location.href = `job_posting.html?edit=${jobId}`;
+        console.log('Edit job clicked for job ID:', jobId);
+        
+        // Check if job_posting.html exists and redirect with edit parameter
+        const editUrl = `job_posting.html?edit=${jobId}`;
+        console.log('Redirecting to:', editUrl);
+        
+        // Test if the page exists by creating a temporary link
+        const testLink = document.createElement('a');
+        testLink.href = editUrl;
+        
+        // Always try to redirect - if the page doesn't exist, it will show a 404
+        window.location.href = editUrl;
+        
+        // Fallback - if redirect fails, show message
+        setTimeout(() => {
+            if (window.location.href.indexOf('job_posting.html') === -1) {
+                this.showToast('Edit page not found. Please check if job_posting.html exists.', 'error');
+                console.error('Edit page job_posting.html not found');
+            }
+        }, 1000);
     }
 
     showDeleteConfirmation(jobId) {
@@ -784,83 +851,140 @@ class ManageJobs {
 
     bindEvents() {
         // Select all checkbox
-        document.getElementById('selectAllJobs').addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            document.querySelectorAll('.job-checkbox').forEach(checkbox => {
-                checkbox.checked = isChecked;
-                const jobId = checkbox.dataset.jobId;
-                if (isChecked) {
-                    this.selectedJobs.add(jobId);
-                } else {
-                    this.selectedJobs.delete(jobId);
-                }
+        const selectAllCheckbox = document.getElementById('selectAllJobs');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                document.querySelectorAll('.job-checkbox').forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                    const jobId = checkbox.dataset.jobId;
+                    if (isChecked) {
+                        this.selectedJobs.add(jobId);
+                    } else {
+                        this.selectedJobs.delete(jobId);
+                    }
+                });
+                this.updateBulkActions();
             });
-            this.updateBulkActions();
-        });
+        }
 
         // Filter events
-        document.getElementById('jobSearch').addEventListener('input', (e) => {
-            this.filters.search = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderTable();
-        });
+        const jobSearch = document.getElementById('jobSearch');
+        if (jobSearch) {
+            jobSearch.addEventListener('input', (e) => {
+                this.filters.search = e.target.value;
+                this.currentPage = 1;
+                this.applyFilters();
+                this.renderTable();
+            });
+        }
 
-        document.getElementById('statusFilter').addEventListener('change', (e) => {
-            this.filters.status = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderTable();
-        });
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filters.status = e.target.value;
+                this.currentPage = 1;
+                this.applyFilters();
+                this.renderTable();
+            });
+        }
 
-        document.getElementById('typeFilter').addEventListener('change', (e) => {
-            this.filters.type = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderTable();
-        });
+        const typeFilter = document.getElementById('typeFilter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.filters.type = e.target.value;
+                this.currentPage = 1;
+                this.applyFilters();
+                this.renderTable();
+            });
+        }
 
-        document.getElementById('sortBy').addEventListener('change', (e) => {
-            this.filters.sortBy = e.target.value;
-            this.applyFilters();
-            this.renderTable();
-        });
+        const sortBy = document.getElementById('sortBy');
+        if (sortBy) {
+            sortBy.addEventListener('change', (e) => {
+                this.filters.sortBy = e.target.value;
+                this.applyFilters();
+                this.renderTable();
+            });
+        }
 
         // Clear filters
-        document.getElementById('clearFilters').addEventListener('click', () => {
-            this.clearFilters();
-        });
+        const clearFilters = document.getElementById('clearFilters');
+        if (clearFilters) {
+            clearFilters.addEventListener('click', () => {
+                this.clearFilters();
+            });
+        }
 
         // Bulk actions
-        document.getElementById('bulkActivate').addEventListener('click', () => {
-            this.bulkUpdateStatus('active');
-        });
+        const bulkActivate = document.getElementById('bulkActivate');
+        if (bulkActivate) {
+            bulkActivate.addEventListener('click', () => {
+                this.bulkUpdateStatus('active');
+            });
+        }
 
-        document.getElementById('bulkPause').addEventListener('click', () => {
-            this.bulkUpdateStatus('paused');
-        });
+        const bulkPause = document.getElementById('bulkPause');
+        if (bulkPause) {
+            bulkPause.addEventListener('click', () => {
+                this.bulkUpdateStatus('paused');
+            });
+        }
 
-        document.getElementById('bulkClose').addEventListener('click', () => {
-            this.bulkUpdateStatus('closed');
-        });
+        const bulkClose = document.getElementById('bulkClose');
+        if (bulkClose) {
+            bulkClose.addEventListener('click', () => {
+                this.bulkUpdateStatus('closed');
+            });
+        }
 
-        document.getElementById('bulkDelete').addEventListener('click', () => {
-            this.showBulkDeleteConfirmation();
-        });
+        const bulkDelete = document.getElementById('bulkDelete');
+        if (bulkDelete) {
+            bulkDelete.addEventListener('click', () => {
+                this.showBulkDeleteConfirmation();
+            });
+        }
 
         // Other buttons
-        document.getElementById('postNewJobBtn').addEventListener('click', () => {
-            window.location.href = 'job_posting.html';
-        });
+        const postNewJobBtn = document.getElementById('postNewJobBtn');
+        if (postNewJobBtn) {
+            postNewJobBtn.addEventListener('click', () => {
+                window.location.href = 'job_posting.html';
+            });
+        }
 
-        document.getElementById('refreshJobs').addEventListener('click', () => {
-            this.loadJobs();
-        });
+        const refreshJobs = document.getElementById('refreshJobs');
+        if (refreshJobs) {
+            refreshJobs.addEventListener('click', () => {
+                this.loadJobs();
+            });
+        }
 
         // Logout
-        document.querySelector('.logout-btn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleLogout();
+        const logoutBtn = document.querySelector('.logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleLogout();
+            });
+        }
+
+        // Global modal close events
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
         });
     }
 
@@ -987,12 +1111,20 @@ class ManageJobs {
     }
 
     hideModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     showToast(message, type = 'success') {
         const toast = document.getElementById('successToast');
         const messageElement = document.getElementById('toastMessage');
+        
+        if (!toast || !messageElement) {
+            console.log('Toast elements not found');
+            return;
+        }
         
         messageElement.textContent = message;
         
