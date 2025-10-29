@@ -15,7 +15,9 @@ import {
   getDoc,
   updateDoc,
   deleteDoc,
-  orderBy
+  orderBy,
+  increment,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
@@ -49,6 +51,7 @@ class ManageJobs {
             type: 'all',
             sortBy: 'newest'
         };
+        this.viewListeners = {};
         this.init();
     }
 
@@ -73,20 +76,63 @@ class ManageJobs {
 
     async loadCompanyData() {
         try {
-            const companyDoc = await getDoc(doc(db, 'companies', this.currentUser.uid));
-            if (companyDoc.exists()) {
-                this.companyData = companyDoc.data();
+            console.log('Loading company data for user:', this.currentUser.uid);
+            
+            // Try multiple collection names for company data
+            const collections = ['companies', 'employers', 'users'];
+            let companyData = null;
+            
+            for (const collectionName of collections) {
+                try {
+                    const companyDoc = await getDoc(doc(db, collectionName, this.currentUser.uid));
+                    if (companyDoc.exists()) {
+                        companyData = companyDoc.data();
+                        console.log(`Found company data in ${collectionName}:`, companyData);
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`No company data found in ${collectionName}:`, error.message);
+                }
+            }
+            
+            if (companyData) {
+                this.companyData = companyData;
+                this.updateCompanyLogo();
+            } else {
+                console.log('No company data found in any collection');
+                // Set default placeholder
                 this.updateCompanyLogo();
             }
+            
         } catch (error) {
             console.error('Error loading company data:', error);
+            this.updateCompanyLogo();
         }
     }
 
     updateCompanyLogo() {
         const companyLogoNav = document.getElementById('companyLogoNav');
-        if (this.companyData?.logoUrl && this.companyData.logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
-            companyLogoNav.src = this.companyData.logoUrl;
+        if (this.companyData) {
+            // Try multiple possible field names for company logo
+            const logoUrl = this.companyData.logoUrl || 
+                           this.companyData.logo || 
+                           this.companyData.companyLogo ||
+                           this.companyData.profilePicture ||
+                           this.companyData.photoURL;
+            
+            if (logoUrl && logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
+                companyLogoNav.src = logoUrl;
+                companyLogoNav.onerror = () => {
+                    companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
+                };
+                console.log('Updated company logo:', logoUrl);
+            } else {
+                console.log('No valid company logo found, using placeholder');
+                companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
+            }
+        } else {
+            console.log('No company data available for logo');
+            companyLogoNav.src = 'https://via.placeholder.com/32x32?text=Logo';
         }
     }
 
@@ -113,14 +159,26 @@ class ManageJobs {
             console.log('Found', querySnapshot.size, 'jobs');
             
             this.jobs = [];
-            querySnapshot.forEach((doc) => {
+            
+            // Load jobs and their applicant counts
+            for (const doc of querySnapshot.docs) {
+                const jobData = doc.data();
                 const job = { 
                     id: doc.id, 
-                    ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt || new Date())
+                    ...jobData,
+                    createdAt: jobData.createdAt?.toDate ? jobData.createdAt.toDate() : new Date(jobData.createdAt || new Date())
                 };
+                
+                // Get actual applicant count for this job
+                job.applicantCount = await this.getApplicantCount(job.id);
+                job.viewCount = jobData.viewCount || 0;
+                
                 this.jobs.push(job);
-            });
+                console.log(`Job ${job.title}: ${job.applicantCount} applicants`);
+                
+                // Start real-time view tracking for this job
+                this.startViewTracking(job.id);
+            }
             
             this.applyFilters();
             this.renderTable();
@@ -128,6 +186,73 @@ class ManageJobs {
         } catch (error) {
             console.error('Error loading jobs:', error);
             this.showErrorState(tableBody, error);
+        }
+    }
+
+    async getApplicantCount(jobId) {
+        try {
+            console.log('Getting applicant count for job:', jobId);
+            
+            const applicationsQuery = query(
+                collection(db, 'applications'),
+                where('jobId', '==', jobId)
+            );
+            
+            const applicationsSnapshot = await getDocs(applicationsQuery);
+            const count = applicationsSnapshot.size;
+            console.log(`Job ${jobId} has ${count} applicants`);
+            
+            return count;
+        } catch (error) {
+            console.error('Error getting applicant count for job', jobId, ':', error);
+            return 0;
+        }
+    }
+
+    startViewTracking(jobId) {
+        // Stop existing listener if any
+        if (this.viewListeners[jobId]) {
+            this.viewListeners[jobId]();
+        }
+
+        // Set up real-time listener for view count
+        const jobRef = doc(db, 'jobs', jobId);
+        this.viewListeners[jobId] = onSnapshot(jobRef, (doc) => {
+            if (doc.exists()) {
+                const jobData = doc.data();
+                const newViewCount = jobData.viewCount || 0;
+                
+                // Update the job in our local array
+                const jobIndex = this.jobs.findIndex(job => job.id === jobId);
+                if (jobIndex !== -1) {
+                    const oldViewCount = this.jobs[jobIndex].viewCount || 0;
+                    this.jobs[jobIndex].viewCount = newViewCount;
+                    
+                    // Update the view count in the table with animation
+                    this.updateViewCountInTable(jobId, newViewCount, oldViewCount);
+                    
+                    // Update stats
+                    this.updateStats();
+                }
+            }
+        }, (error) => {
+            console.error('Error in view tracking for job', jobId, ':', error);
+        });
+    }
+
+    updateViewCountInTable(jobId, newCount, oldCount) {
+        const viewCountElement = document.querySelector(`[data-job-id="${jobId}"] .view-count`);
+        if (viewCountElement) {
+            // Add animation class if count increased
+            if (newCount > oldCount) {
+                viewCountElement.classList.add('increasing');
+                setTimeout(() => {
+                    viewCountElement.classList.remove('increasing');
+                }, 1000);
+            }
+            
+            viewCountElement.textContent = newCount;
+            viewCountElement.title = `${newCount} views`;
         }
     }
 
@@ -230,8 +355,16 @@ class ManageJobs {
                 </td>
                 <td class="job-type">${this.formatJobType(job.type)}</td>
                 <td class="job-location">${job.location || 'Remote'}</td>
-                <td class="job-applicants">${applicantCount}</td>
-                <td class="job-views">${viewCount}</td>
+                <td class="job-applicants">
+                    <span class="applicant-count" title="${applicantCount} applicants">
+                        ${applicantCount}
+                    </span>
+                </td>
+                <td class="job-views">
+                    <span class="view-count" title="${viewCount} views">
+                        ${viewCount}
+                    </span>
+                </td>
                 <td class="job-status">${statusBadge}</td>
                 <td class="job-date">${formattedDate}</td>
                 <td class="job-actions">
@@ -418,6 +551,13 @@ class ManageJobs {
         const totalApplicants = this.jobs.reduce((sum, job) => sum + (job.applicantCount || 0), 0);
         const totalViews = this.jobs.reduce((sum, job) => sum + (job.viewCount || 0), 0);
 
+        console.log('Updating stats:', {
+            activeJobs,
+            totalJobs: this.jobs.length,
+            totalApplicants,
+            totalViews
+        });
+
         document.getElementById('activeJobsCount').textContent = activeJobs;
         document.getElementById('totalJobsCount').textContent = this.jobs.length;
         document.getElementById('totalApplicantsCount').textContent = totalApplicants;
@@ -437,9 +577,30 @@ class ManageJobs {
         content.innerHTML = this.createJobDetailsHTML(job);
         modal.style.display = 'flex';
 
-        // Set edit button action
-        document.getElementById('editJobBtn').onclick = () => {
-            this.editJob(jobId);
+        // Set up modal close events
+        this.setupModalCloseEvents(modal);
+    }
+
+    setupModalCloseEvents(modal) {
+        // Close button
+        const closeBtn = modal.querySelector('.close-modal');
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // Close button in footer
+        const closeFooterBtn = modal.querySelector('#closeJobDetails');
+        if (closeFooterBtn) {
+            closeFooterBtn.onclick = () => {
+                modal.style.display = 'none';
+            };
+        }
+
+        // Click outside to close
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
         };
     }
 
@@ -510,7 +671,7 @@ class ManageJobs {
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Total Views</span>
-                            <span class="detail-value">${job.viewCount || 0}</span>
+                            <span class="detail-value">${job.viewCount || 0} <span class="real-time-indicator" title="Real-time updates"></span></span>
                         </div>
                     </div>
                 </div>
@@ -519,6 +680,7 @@ class ManageJobs {
     }
 
     editJob(jobId) {
+        // Redirect to job posting page with edit parameter
         window.location.href = `job_posting.html?edit=${jobId}`;
     }
 
@@ -536,13 +698,45 @@ class ManageJobs {
 
         modal.style.display = 'flex';
 
-        document.getElementById('confirmDelete').onclick = () => {
+        // Set up modal close events
+        this.setupDeleteModalEvents(modal, jobId);
+    }
+
+    setupDeleteModalEvents(modal, jobId) {
+        // Close button
+        const closeBtn = modal.querySelector('.close-modal');
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // Cancel button
+        const cancelBtn = modal.querySelector('#cancelDelete');
+        cancelBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // Confirm delete button
+        const confirmBtn = modal.querySelector('#confirmDelete');
+        confirmBtn.onclick = () => {
             this.deleteJob(jobId);
+        };
+
+        // Click outside to close
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
         };
     }
 
     async deleteJob(jobId) {
         try {
+            // Stop view tracking for this job
+            if (this.viewListeners[jobId]) {
+                this.viewListeners[jobId]();
+                delete this.viewListeners[jobId];
+            }
+
             await deleteDoc(doc(db, 'jobs', jobId));
             this.hideModal('deleteModal');
             this.showToast('Job deleted successfully');
@@ -663,22 +857,6 @@ class ManageJobs {
             this.loadJobs();
         });
 
-        // Modal close events
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const modal = e.target.closest('.modal');
-                modal.style.display = 'none';
-            });
-        });
-
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        });
-
         // Logout
         document.querySelector('.logout-btn').addEventListener('click', (e) => {
             e.preventDefault();
@@ -743,8 +921,33 @@ class ManageJobs {
         countElement.textContent = this.selectedJobs.size;
         modal.style.display = 'flex';
 
-        document.getElementById('confirmBulkDelete').onclick = () => {
+        this.setupBulkDeleteModalEvents(modal);
+    }
+
+    setupBulkDeleteModalEvents(modal) {
+        // Close button
+        const closeBtn = modal.querySelector('.close-modal');
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // Cancel button
+        const cancelBtn = modal.querySelector('#cancelBulkDelete');
+        cancelBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // Confirm delete button
+        const confirmBtn = modal.querySelector('#confirmBulkDelete');
+        confirmBtn.onclick = () => {
             this.bulkDeleteJobs();
+        };
+
+        // Click outside to close
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
         };
     }
 
@@ -752,6 +955,14 @@ class ManageJobs {
         const jobsToDelete = Array.from(this.selectedJobs);
         
         try {
+            // Stop view tracking for all jobs to be deleted
+            jobsToDelete.forEach(jobId => {
+                if (this.viewListeners[jobId]) {
+                    this.viewListeners[jobId]();
+                    delete this.viewListeners[jobId];
+                }
+            });
+
             const deletePromises = jobsToDelete.map(jobId => 
                 deleteDoc(doc(db, 'jobs', jobId))
             );
@@ -786,13 +997,9 @@ class ManageJobs {
         messageElement.textContent = message;
         
         if (type === 'error') {
-            toast.style.borderLeftColor = 'var(--accent)';
-            toast.querySelector('i').className = 'fas fa-exclamation-circle';
-            toast.querySelector('i').style.color = 'var(--accent)';
+            toast.classList.add('error');
         } else {
-            toast.style.borderLeftColor = 'var(--success)';
-            toast.querySelector('i').className = 'fas fa-check-circle';
-            toast.querySelector('i').style.color = 'var(--success)';
+            toast.classList.remove('error');
         }
         
         toast.style.display = 'block';
@@ -824,6 +1031,13 @@ class ManageJobs {
 
     async handleLogout() {
         try {
+            // Stop all view listeners
+            Object.values(this.viewListeners).forEach(unsubscribe => {
+                if (typeof unsubscribe === 'function') {
+                    unsubscribe();
+                }
+            });
+            
             await signOut(auth);
             window.location.href = 'login.html';
         } catch (error) {
