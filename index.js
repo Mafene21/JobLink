@@ -39,48 +39,37 @@ class JobLinkHomepage {
     }
 
     // Mobile Navigation Toggle
-    bindEvents() {
-        const hamburger = document.querySelector('.hamburger');
-        const navMenu = document.querySelector('.nav-menu');
-        
-        if (hamburger && navMenu) {
-            hamburger.addEventListener('click', function() {
-                hamburger.classList.toggle('active');
-                navMenu.classList.toggle('active');
-            });
-        }
-        
-        // Fixed: Smooth scrolling for anchor links - only for internal page anchors
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            // Only process anchors that point to actual elements on the page
-            if (anchor.getAttribute('href') !== '#') {
-                anchor.addEventListener('click', function (e) {
-                    const href = this.getAttribute('href');
-                    if (href !== '#' && href.startsWith('#')) {
-                        e.preventDefault();
-                        const target = document.querySelector(href);
-                        if (target) {
-                            target.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                        }
-                    }
-                });
-            }
-        });
-        
-        // Search functionality
-        this.initAdvancedSearch();
-        
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.navbar') && navMenu?.classList.contains('active')) {
-                hamburger?.classList.remove('active');
-                navMenu?.classList.remove('active');
-            }
+    // In your existing JavaScript, update the bindEvents method:
+bindEvents() {
+    const hamburger = document.querySelector('.hamburger');
+    const navMenu = document.querySelector('.nav-menu');
+    
+    if (hamburger && navMenu) {
+        hamburger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            hamburger.classList.toggle('active');
+            navMenu.classList.toggle('active');
         });
     }
+    
+    // Close menu when clicking on a link
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.addEventListener('click', () => {
+            hamburger?.classList.remove('active');
+            navMenu?.classList.remove('active');
+        });
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.navbar') && navMenu?.classList.contains('active')) {
+            hamburger?.classList.remove('active');
+            navMenu?.classList.remove('active');
+        }
+    });
+    
+    // Rest of your existing code...
+}
 
     // Enhanced Search with Suggestions
     initAdvancedSearch() {
