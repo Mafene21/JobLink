@@ -1,103 +1,871 @@
-// Mobile Navigation Toggle
-document.addEventListener('DOMContentLoaded', function() {
-  const hamburger = document.querySelector('.hamburger');
-  const navMenu = document.querySelector('.nav-menu');
-  
-  hamburger.addEventListener('click', function() {
-    hamburger.classList.toggle('active');
-    navMenu.classList.toggle('active');
-  });
-  
-  // Close mobile menu when clicking on a link
-  document.querySelectorAll('.nav-link').forEach(n => n.addEventListener('click', () => {
-    hamburger.classList.remove('active');
-    navMenu.classList.remove('active');
-  }));
-  
-  // Animate elements on scroll
-  const animateOnScroll = function() {
-    const elements = document.querySelectorAll('.feature-card, .testimonial-card');
-    
-    elements.forEach(element => {
-      const elementPosition = element.getBoundingClientRect().top;
-      const screenPosition = window.innerHeight / 1.2;
-      
-      if (elementPosition < screenPosition) {
-        element.style.opacity = '1';
-        element.style.transform = 'translateY(0)';
-      }
-    });
-  };
-  
-  // Set initial state for animation
-  document.querySelectorAll('.feature-card, .testimonial-card').forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(20px)';
-    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-  });
-  
-  // Run animation on load and scroll
-  window.addEventListener('load', animateOnScroll);
-  window.addEventListener('scroll', animateOnScroll);
-  
-  // Add smooth scrolling for anchor links
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      const targetId = this.getAttribute('href');
-      if (targetId === '#') return;
-      
-      const targetElement = document.querySelector(targetId);
-      if (targetElement) {
-        window.scrollTo({
-          top: targetElement.offsetTop - 80,
-          behavior: 'smooth'
-        });
-      }
-    });
-  });
-  
-  // Stats counter animation
-  const statsSection = document.querySelector('.hero-stats');
-  const stats = document.querySelectorAll('.stat-number');
-  let animated = false;
-  
-  const animateStats = function() {
-    if (animated) return;
-    
-    const statsSectionPosition = statsSection.getBoundingClientRect().top;
-    const screenPosition = window.innerHeight / 1.2;
-    
-    if (statsSectionPosition < screenPosition) {
-      animated = true;
-      
-      stats.forEach(stat => {
-        const target = parseInt(stat.getAttribute('data-target') || stat.textContent.replace('+', ''));
-        const increment = target / 100;
-        let current = 0;
+// Firebase configuration
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs,
+    query,
+    where,
+    orderBy,
+    limit 
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
+    authDomain: "joblink-babb6.firebaseapp.com",
+    projectId: "joblink-babb6",
+    storageBucket: "joblink-babb6.firebasestorage.app",
+    messagingSenderId: "442169381701",
+    appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
+    measurementId: "G-Z0737HMGCQ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+class JobLinkHomepage {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        this.bindEvents();
+        this.loadFeaturedJobs();
+        this.loadCategories();
+        this.loadRealStats();
+        this.animateOnScroll();
+    }
+
+    // Mobile Navigation Toggle
+    bindEvents() {
+        const hamburger = document.querySelector('.hamburger');
+        const navMenu = document.querySelector('.nav-menu');
         
-        const updateCount = () => {
-          if (current < target) {
-            current += increment;
-            stat.textContent = Math.ceil(current) + '+';
-            setTimeout(updateCount, 20);
-          } else {
-            stat.textContent = target + '+';
-          }
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', function() {
+                hamburger.classList.toggle('active');
+                navMenu.classList.toggle('active');
+            });
+        }
+        
+        // Fixed: Smooth scrolling for anchor links - only for internal page anchors
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            // Only process anchors that point to actual elements on the page
+            if (anchor.getAttribute('href') !== '#') {
+                anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href !== '#' && href.startsWith('#')) {
+                        e.preventDefault();
+                        const target = document.querySelector(href);
+                        if (target) {
+                            target.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Search functionality
+        this.initAdvancedSearch();
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.navbar') && navMenu?.classList.contains('active')) {
+                hamburger?.classList.remove('active');
+                navMenu?.classList.remove('active');
+            }
+        });
+    }
+
+    // Enhanced Search with Suggestions
+    initAdvancedSearch() {
+        const searchBtn = document.getElementById('searchButton');
+        const jobInput = document.getElementById('jobSearchInput');
+        const locationInput = document.getElementById('locationSearchInput');
+        const suggestions = document.querySelector('.search-suggestions');
+        
+        const categories = ['Technology', 'Healthcare', 'Business', 'Education', 'Engineering', 'Creative', 
+                           'Marketing', 'Sales', 'Customer Service', 'Finance', 'Design', 'Operations'];
+        
+        // Search button click
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                this.performSearch();
+            });
+        }
+        
+        // Enter key support
+        [jobInput, locationInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.performSearch();
+                    }
+                });
+            }
+        });
+        
+        // Job input suggestions
+        if (jobInput && suggestions) {
+            jobInput.addEventListener('input', (e) => {
+                const value = e.target.value.toLowerCase();
+                suggestions.innerHTML = '';
+                
+                if (value.length > 1) {
+                    const filtered = categories.filter(cat => 
+                        cat.toLowerCase().includes(value)
+                    );
+                    
+                    if (filtered.length > 0) {
+                        filtered.forEach(cat => {
+                            const div = document.createElement('div');
+                            div.textContent = cat;
+                            div.addEventListener('click', () => {
+                                jobInput.value = cat;
+                                suggestions.innerHTML = '';
+                                this.performSearch();
+                            });
+                            suggestions.appendChild(div);
+                        });
+                    } else {
+                        const div = document.createElement('div');
+                        div.textContent = 'No suggestions found';
+                        div.style.color = 'var(--gray)';
+                        div.style.cursor = 'default';
+                        suggestions.appendChild(div);
+                    }
+                }
+            });
+        }
+        
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (suggestions && !e.target.closest('.search-input')) {
+                suggestions.innerHTML = '';
+            }
+        });
+    }
+
+    performSearch() {
+        const jobInput = document.getElementById('jobSearchInput');
+        const locationInput = document.getElementById('locationSearchInput');
+        
+        if (!jobInput || !locationInput) return;
+        
+        const jobQuery = jobInput.value.trim();
+        const locationQuery = locationInput.value.trim();
+        
+        const params = new URLSearchParams();
+        if (jobQuery) params.set('q', jobQuery);
+        if (locationQuery) params.set('location', locationQuery);
+        
+        // Store search in session storage for jobs page
+        sessionStorage.setItem('lastSearch', JSON.stringify({
+            query: jobQuery,
+            location: locationQuery,
+            timestamp: new Date().getTime()
+        }));
+        
+        window.location.href = `jobs.html?${params.toString()}`;
+    }
+
+    // Generate SVG placeholder for company logos
+    generateCompanyLogo(companyName, size = 50) {
+        const initials = companyName
+            ? companyName.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2)
+            : 'CO';
+        
+        const colors = ['#2c5aa0', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
+        const color = colors[companyName?.length % colors.length] || '#2c5aa0';
+        
+        const svgString = `
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="${color}" rx="8"/>
+                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" 
+                      fill="white" font-weight="bold" font-size="${size * 0.4}">
+                    ${initials}
+                </text>
+            </svg>
+        `;
+        
+        // Convert to data URL
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+    }
+
+    // Load Featured Jobs from Firebase
+    async loadFeaturedJobs() {
+        const jobsGrid = document.getElementById('jobsGrid');
+        if (!jobsGrid) return;
+        
+        try {
+            jobsGrid.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading featured jobs...</p>
+                </div>
+            `;
+
+            console.log('Loading featured jobs from Firebase...');
+
+            // Query for featured jobs - try multiple approaches
+            let jobsQuery;
+            let jobsSnapshot;
+            
+            try {
+                // Approach 1: Try to get jobs with featured flag
+                jobsQuery = query(
+                    collection(db, 'jobs'),
+                    where('featured', '==', true),
+                    where('status', '==', 'active'),
+                    limit(6)
+                );
+                jobsSnapshot = await getDocs(jobsQuery);
+                console.log('Found featured jobs:', jobsSnapshot.size);
+                
+                // If no featured jobs found, get recent active jobs
+                if (jobsSnapshot.empty) {
+                    console.log('No featured jobs found, loading recent active jobs...');
+                    jobsQuery = query(
+                        collection(db, 'jobs'),
+                        where('status', '==', 'active'),
+                        orderBy('createdAt', 'desc'),
+                        limit(6)
+                    );
+                    jobsSnapshot = await getDocs(jobsQuery);
+                    console.log('Found recent active jobs:', jobsSnapshot.size);
+                }
+                
+            } catch (indexError) {
+                console.log('Index error, trying simple query...', indexError);
+                // Fallback: Just get active jobs without ordering
+                jobsQuery = query(
+                    collection(db, 'jobs'),
+                    where('status', '==', 'active'),
+                    limit(6)
+                );
+                jobsSnapshot = await getDocs(jobsQuery);
+            }
+            
+            if (jobsSnapshot.empty) {
+                console.log('No jobs found in Firebase');
+                this.showNoJobsMessage(jobsGrid);
+                return;
+            }
+            
+            let jobsHTML = '';
+            let jobCount = 0;
+            
+            jobsSnapshot.forEach(doc => {
+                jobCount++;
+                const jobData = doc.data();
+                console.log(`Job ${jobCount}:`, {
+                    id: doc.id,
+                    title: jobData.title,
+                    company: jobData.companyName,
+                    status: jobData.status,
+                    featured: jobData.featured,
+                    skills: jobData.skills,
+                    skillsType: typeof jobData.skills
+                });
+                
+                const job = {
+                    id: doc.id,
+                    title: jobData.title,
+                    companyName: jobData.companyName,
+                    companyLogo: jobData.companyLogo,
+                    type: jobData.type,
+                    location: jobData.location,
+                    salary: jobData.salary,
+                    skills: jobData.skills,
+                    featured: jobData.featured || false,
+                    urgent: jobData.urgent || false,
+                    createdAt: jobData.createdAt,
+                    status: jobData.status
+                };
+                
+                jobsHTML += this.createJobCard(job, doc.id);
+            });
+            
+            console.log(`Rendering ${jobCount} jobs`);
+            jobsGrid.innerHTML = jobsHTML;
+            
+            // Re-initialize animations for the new job cards
+            setTimeout(() => {
+                this.animateJobCards();
+            }, 100);
+            
+        } catch (error) {
+            console.error('Error loading featured jobs:', error);
+            this.showErrorState(jobsGrid, error);
+        }
+    }
+
+    // Show no jobs message
+    showNoJobsMessage(jobsGrid) {
+        jobsGrid.innerHTML = `
+            <div class="no-jobs">
+                <i class="fas fa-briefcase"></i>
+                <h3>No Jobs Available</h3>
+                <p>There are currently no active job postings. Check back later for new opportunities.</p>
+                <button onclick="window.retryLoadJobs()" class="btn btn-primary" style="margin-top: 15px;">
+                    <i class="fas fa-redo"></i> Check Again
+                </button>
+            </div>
+        `;
+    }
+
+    // Show error state
+    showErrorState(jobsGrid, error) {
+        jobsGrid.innerHTML = `
+            <div class="no-jobs">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error Loading Jobs</h3>
+                <p>There was a problem loading job listings. Please try again.</p>
+                <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="window.retryLoadJobs()" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                    <button onclick="window.jobLinkHomepage.showFallbackJobs()" class="btn btn-secondary">
+                        <i class="fas fa-eye"></i> Show Demo Jobs
+                    </button>
+                </div>
+                ${error ? `<small style="display: block; margin-top: 10px; color: var(--gray);">Error: ${error.message}</small>` : ''}
+            </div>
+        `;
+    }
+
+    // Fallback demo jobs (only when explicitly requested)
+    showFallbackJobs() {
+        const jobsGrid = document.getElementById('jobsGrid');
+        if (!jobsGrid) return;
+        
+        const fallbackJobs = [
+            {
+                id: 'demo-1',
+                title: 'Senior Software Engineer',
+                companyName: 'Tech Solutions Ltd',
+                type: 'full-time',
+                location: 'Kampala',
+                salary: '$3,000 - $5,000',
+                skills: ['JavaScript', 'React', 'Node.js'],
+                featured: true,
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+            },
+            {
+                id: 'demo-2',
+                title: 'Registered Nurse',
+                companyName: 'City Hospital',
+                type: 'full-time',
+                location: 'Mbarara',
+                salary: '$1,500 - $2,500',
+                skills: ['Nursing', 'Patient Care', 'BLS Certified'],
+                urgent: true,
+                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
+            },
+            {
+                id: 'demo-3',
+                title: 'Mathematics Teacher',
+                companyName: 'Green Valley School',
+                type: 'part-time',
+                location: 'Fort Portal',
+                salary: '$800 - $1,200',
+                skills: ['Mathematics', 'Teaching', 'Curriculum'],
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
+            },
+            {
+                id: 'demo-4',
+                title: 'Marketing Manager',
+                companyName: 'Digital Agency UG',
+                type: 'full-time',
+                location: 'Kampala',
+                salary: '$2,000 - $3,500',
+                skills: ['Marketing', 'SEO', 'Social Media'],
+                featured: true,
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
+            },
+            {
+                id: 'demo-5',
+                title: 'Sales Representative',
+                companyName: 'Global Solutions',
+                type: 'full-time',
+                location: 'Remote',
+                salary: '$1,200 - $2,000',
+                skills: ['Sales', 'Communication', 'CRM'],
+                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 1 week ago
+            },
+            {
+                id: 'demo-6',
+                title: 'Graphic Designer',
+                companyName: 'Creative Studio',
+                type: 'freelance',
+                location: 'Kampala',
+                salary: 'Negotiable',
+                skills: ['Photoshop', 'Illustrator', 'UI/UX'],
+                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) // 4 days ago
+            }
+        ];
+
+        let jobsHTML = '';
+        fallbackJobs.forEach(job => {
+            jobsHTML += this.createJobCard(job, job.id);
+        });
+        
+        jobsGrid.innerHTML = jobsHTML;
+        
+        // Re-initialize animations
+        setTimeout(() => {
+            this.animateJobCards();
+        }, 100);
+    }
+
+    createJobCard(job, jobId) {
+        // Handle Firebase timestamp or regular date
+        let createdAt;
+        if (job.createdAt && typeof job.createdAt.toDate === 'function') {
+            createdAt = job.createdAt.toDate();
+        } else if (job.createdAt instanceof Date) {
+            createdAt = job.createdAt;
+        } else if (job.createdAt) {
+            createdAt = new Date(job.createdAt);
+        } else {
+            createdAt = new Date(); // Fallback to current date
+        }
+        
+        const isFeatured = job.featured || false;
+        const isUrgent = job.urgent || false;
+        
+        // Generate SVG logo - NO EXTERNAL DEPENDENCIES
+        const logoDataURL = this.generateCompanyLogo(job.companyName);
+        
+        // Safe skills handling - handle different data types
+        const getSkillsHTML = () => {
+            try {
+                if (!job.skills) {
+                    return '<span class="skill-tag">Various Skills</span>';
+                }
+                
+                let skillsArray = [];
+                
+                if (Array.isArray(job.skills)) {
+                    // Skills is already an array
+                    skillsArray = job.skills;
+                } else if (typeof job.skills === 'string') {
+                    // Skills is a string - try to split by commas or other delimiters
+                    skillsArray = job.skills.split(/[,|;]/).map(s => s.trim()).filter(s => s);
+                } else if (typeof job.skills === 'object' && job.skills !== null) {
+                    // Skills might be an object - try to extract values
+                    skillsArray = Object.values(job.skills).filter(s => typeof s === 'string');
+                }
+                
+                // Filter out any non-string values and take first 3
+                const validSkills = skillsArray
+                    .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
+                    .slice(0, 3);
+                
+                if (validSkills.length === 0) {
+                    return '<span class="skill-tag">Various Skills</span>';
+                }
+                
+                return validSkills.map(skill => 
+                    `<span class="skill-tag">${skill}</span>`
+                ).join('');
+                
+            } catch (error) {
+                console.warn('Error processing skills for job:', jobId, error);
+                return '<span class="skill-tag">Various Skills</span>';
+            }
         };
         
-        updateCount();
-      });
+        return `
+            <div class="job-card ${isFeatured ? 'featured' : ''} ${isUrgent ? 'urgent' : ''}" data-job-id="${jobId}">
+                <div class="job-header">
+                    <div class="company-logo">
+                        <img src="${logoDataURL}" alt="${job.companyName || 'Company'}" width="50" height="50">
+                    </div>
+                    <div class="job-info">
+                        <h3>${job.title || 'Untitled Position'}</h3>
+                        <p class="company-name">${job.companyName || 'Company'}</p>
+                    </div>
+                    <span class="job-type ${job.type || 'full-time'}">${this.formatJobType(job.type)}</span>
+                </div>
+                <div class="job-details">
+                    <span><i class="fas fa-map-marker-alt"></i> ${job.location || 'Remote'}</span>
+                    <span><i class="fas fa-money-bill-wave"></i> ${job.salary || 'Negotiable'}</span>
+                    <span><i class="fas fa-clock"></i> ${this.formatDate(createdAt)}</span>
+                </div>
+                <div class="job-skills">
+                    ${getSkillsHTML()}
+                </div>
+                <button class="btn-apply" onclick="window.jobLinkHomepage.viewJob('${jobId}')">
+                    Apply Now
+                </button>
+            </div>
+        `;
     }
-  };
-  
-  // Initialize stats with data attributes
-  document.querySelectorAll('.stat-number').forEach(stat => {
-    const value = stat.textContent;
-    stat.setAttribute('data-target', value.replace('+', ''));
-    stat.textContent = '0+';
-  });
-  
-  window.addEventListener('scroll', animateStats);
+
+    formatJobType(jobType) {
+        const types = {
+            'full-time': 'Full Time',
+            'part-time': 'Part Time',
+            'contract': 'Contract',
+            'internship': 'Internship',
+            'remote': 'Remote',
+            'freelance': 'Freelance'
+        };
+        return types[jobType] || jobType || 'Full Time';
+    }
+
+    formatDate(date) {
+        if (!date) return 'Recently';
+        
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+        
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    viewJob(jobId) {
+        if (jobId.startsWith('demo-')) {
+            alert('This is a demo job. In a real application, you would be redirected to the job details page.');
+            return;
+        }
+        // Redirect to job details page for real jobs
+        window.location.href = `job-details.html?id=${jobId}`;
+    }
+
+    // Load Categories
+    async loadCategories() {
+        const categoriesGrid = document.getElementById('categoriesGrid');
+        if (!categoriesGrid) return;
+        
+        const categories = [
+            { name: 'Technology', icon: 'laptop-code', jobs: '2,500+', color: '#2c5aa0' },
+            { name: 'Healthcare', icon: 'stethoscope', jobs: '1,800+', color: '#e74c3c' },
+            { name: 'Business', icon: 'chart-line', jobs: '3,200+', color: '#27ae60' },
+            { name: 'Education', icon: 'graduation-cap', jobs: '1,200+', color: '#f39c12' },
+            { name: 'Engineering', icon: 'wrench', jobs: '2,100+', color: '#9b59b6' },
+            { name: 'Creative', icon: 'paint-brush', jobs: '900+', color: '#d35400' }
+        ];
+        
+        let categoriesHTML = '';
+        categories.forEach(category => {
+            categoriesHTML += `
+                <div class="category-card" onclick="window.jobLinkHomepage.searchCategory('${category.name}')">
+                    <div class="category-icon" style="background: ${category.color}">
+                        <i class="fas fa-${category.icon}"></i>
+                    </div>
+                    <h3>${category.name}</h3>
+                    <p>${category.jobs} Jobs</p>
+                </div>
+            `;
+        });
+        
+        categoriesGrid.innerHTML = categoriesHTML;
+    }
+
+    searchCategory(categoryName) {
+        const jobInput = document.getElementById('jobSearchInput');
+        if (jobInput) {
+            jobInput.value = categoryName;
+            this.performSearch();
+        }
+    }
+
+    // Load Real Stats from Firebase - UPDATED WITH REAL DATA
+    async loadRealStats() {
+        try {
+            console.log('Loading real statistics from Firebase...');
+            
+            // Get all counts in parallel for better performance
+            const [jobsCount, companiesCount, jobSeekersCount, applicationsCount] = await Promise.all([
+                this.getActiveJobsCount(),
+                this.getCompaniesCount(),
+                this.getJobSeekersCount(),
+                this.getTotalApplicationsCount()
+            ]);
+
+            console.log('Real stats loaded:', {
+                jobs: jobsCount,
+                companies: companiesCount,
+                seekers: jobSeekersCount,
+                applications: applicationsCount
+            });
+
+            // Animate counters with real data
+            this.animateCounter('stat-jobs', jobsCount);
+            this.animateCounter('stat-companies', companiesCount);
+            this.animateCounter('stat-seekers', jobSeekersCount);
+            
+        } catch (error) {
+            console.error('Error loading real stats:', error);
+            // Fallback to demo numbers if there's an error
+            this.animateCounter('stat-jobs', 42);
+            this.animateCounter('stat-companies', 15);
+            this.animateCounter('stat-seekers', 125);
+        }
+    }
+
+    // Get count of active jobs
+    async getActiveJobsCount() {
+        try {
+            const jobsQuery = query(
+                collection(db, 'jobs'),
+                where('status', '==', 'active')
+            );
+            const jobsSnapshot = await getDocs(jobsQuery);
+            return jobsSnapshot.size;
+        } catch (error) {
+            console.error('Error getting jobs count:', error);
+            return 42; // Fallback number
+        }
+    }
+
+    // Get count of companies
+    async getCompaniesCount() {
+        try {
+            // Try different collection names for companies
+            const collections = ['companies', 'employers', 'users'];
+            
+            for (const collectionName of collections) {
+                try {
+                    const companiesQuery = query(collection(db, collectionName));
+                    const companiesSnapshot = await getDocs(companiesQuery);
+                    if (companiesSnapshot.size > 0) {
+                        console.log(`Found companies in ${collectionName}:`, companiesSnapshot.size);
+                        return companiesSnapshot.size;
+                    }
+                } catch (error) {
+                    console.log(`No companies found in ${collectionName}:`, error.message);
+                    continue;
+                }
+            }
+            
+            // If no companies found in any collection
+            return 15; // Fallback number
+            
+        } catch (error) {
+            console.error('Error getting companies count:', error);
+            return 15; // Fallback number
+        }
+    }
+
+    // Get count of job seekers (users)
+    async getJobSeekersCount() {
+        try {
+            // Try different collection names for job seekers
+            const collections = ['users', 'jobseekers', 'candidates'];
+            
+            for (const collectionName of collections) {
+                try {
+                    const usersQuery = query(
+                        collection(db, collectionName),
+                        where('userType', 'in', ['jobseeker', 'candidate', 'user'])
+                    );
+                    const usersSnapshot = await getDocs(usersQuery);
+                    if (usersSnapshot.size > 0) {
+                        console.log(`Found job seekers in ${collectionName}:`, usersSnapshot.size);
+                        return usersSnapshot.size;
+                    }
+                } catch (error) {
+                    console.log(`No job seekers found in ${collectionName}:`, error.message);
+                    
+                    // Try without filter if the above fails
+                    try {
+                        const allUsersQuery = query(collection(db, collectionName));
+                        const allUsersSnapshot = await getDocs(allUsersQuery);
+                        if (allUsersSnapshot.size > 0) {
+                            console.log(`Found all users in ${collectionName}:`, allUsersSnapshot.size);
+                            return Math.floor(allUsersSnapshot.size * 0.8); // Estimate 80% are job seekers
+                        }
+                    } catch (secondError) {
+                        continue;
+                    }
+                }
+            }
+            
+            // If no job seekers found, estimate based on applications
+            return await this.estimateJobSeekersFromApplications();
+            
+        } catch (error) {
+            console.error('Error getting job seekers count:', error);
+            return 125; // Fallback number
+        }
+    }
+
+    // New method to get total applications count
+    async getTotalApplicationsCount() {
+        try {
+            const applicationsQuery = query(collection(db, 'applications'));
+            const applicationsSnapshot = await getDocs(applicationsQuery);
+            return applicationsSnapshot.size;
+        } catch (error) {
+            console.error('Error getting applications count:', error);
+            return 0;
+        }
+    }
+
+    // Estimate job seekers count from applications (fallback method)
+    async estimateJobSeekersFromApplications() {
+        try {
+            const applicationsQuery = query(collection(db, 'applications'));
+            const applicationsSnapshot = await getDocs(applicationsQuery);
+            
+            if (applicationsSnapshot.size > 0) {
+                // Count unique users from applications
+                const uniqueUsers = new Set();
+                applicationsSnapshot.forEach(doc => {
+                    const application = doc.data();
+                    if (application.userId) {
+                        uniqueUsers.add(application.userId);
+                    }
+                    if (application.userEmail) {
+                        uniqueUsers.add(application.userEmail);
+                    }
+                });
+                
+                const estimatedCount = uniqueUsers.size || applicationsSnapshot.size;
+                console.log('Estimated job seekers from applications:', estimatedCount);
+                return estimatedCount;
+            }
+            
+            return 125; // Fallback number
+            
+        } catch (error) {
+            console.error('Error estimating job seekers:', error);
+            return 125; // Fallback number
+        }
+    }
+
+    // Enhanced animateCounter with better formatting
+    animateCounter(elementId, target) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        // If target is 0, show a small number to indicate activity
+        const finalTarget = target === 0 ? 5 : target;
+        
+        const duration = 2000;
+        const step = finalTarget / (duration / 16);
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += step;
+            if (current >= finalTarget) {
+                current = finalTarget;
+                clearInterval(timer);
+                element.textContent = this.formatNumber(current) + '+';
+                element.classList.add('animated');
+            } else {
+                element.textContent = this.formatNumber(Math.floor(current)) + '+';
+            }
+        }, 16);
+    }
+
+    formatNumber(num) {
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        return Math.floor(num).toLocaleString();
+    }
+
+    // Animate job cards specifically
+    animateJobCards() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { 
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        const jobCards = document.querySelectorAll('.job-card');
+        jobCards.forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+    }
+
+    // Animate elements on scroll
+    animateOnScroll() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { 
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        // Observe category cards
+        const categoryCards = document.querySelectorAll('.category-card');
+        categoryCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.6s ease ${index * 0.1}s`;
+            observer.observe(card);
+        });
+
+        // Observe step cards
+        const stepCards = document.querySelectorAll('.step-card');
+        stepCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.6s ease ${index * 0.2}s`;
+            observer.observe(card);
+        });
+    }
+}
+
+// Initialize the homepage
+let jobLinkHomepage;
+
+document.addEventListener('DOMContentLoaded', function() {
+    jobLinkHomepage = new JobLinkHomepage();
+    
+    // Make it globally available
+    window.jobLinkHomepage = jobLinkHomepage;
 });
+
+// Global function for retry button
+window.retryLoadJobs = function() {
+    if (window.jobLinkHomepage) {
+        window.jobLinkHomepage.loadFeaturedJobs();
+    }
+};
+
+// Global function for demo jobs
+window.showDemoJobs = function() {
+    if (window.jobLinkHomepage) {
+        window.jobLinkHomepage.showFallbackJobs();
+    }
+};
+
+// Global function to refresh stats
+window.refreshStats = function() {
+    if (window.jobLinkHomepage) {
+        window.jobLinkHomepage.loadRealStats();
+    }
+};

@@ -1,208 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JobLink - Connecting Talent with Opportunity</title>
-  <link rel="stylesheet" href="index.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobLink - Find Your Dream Career</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="logo">
-        <i class="fas fa-handshake"></i>
-        <span>JobLink</span>
-      </div>
-      <ul class="nav-menu">
-        <li><a href="#" class="nav-link active">Home</a></li>
-        <li><a href="about.html" class="nav-link">About</a></li>
-        <li><a href="help_support.html" class="nav-link">Help</a></li>
-        <li><a href="contact.html" class="nav-link">Contact</a></li>
-        <li class="nav-divider"></li>
-        <li><a href="login.html" class="nav-link">Login</a></li>
-        <li><a href="register.html" class="nav-btn">Sign Up</a></li>
-      </ul>
-      <div class="hamburger">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar"></span>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-container">
-      <div class="hero-content">
-        <h1 class="hero-title">Find Your Perfect <span class="highlight">Job Match</span></h1>
-        <p class="hero-subtitle">Connecting talented job seekers with forward-thinking employers through our intelligent matching technology.</p>
-        <div class="hero-buttons">
-          <a href="register.html?type=seeker" class="btn btn-primary">
-            <i class="fas fa-user"></i> I'm a Job Seeker
-          </a>
-          <a href="register.html?type=employer" class="btn btn-secondary">
-            <i class="fas fa-building"></i> I'm an Employer
-          </a>
-        </div>
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-number">10,000+</span>
-            <span class="stat-label">Jobs Posted</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">50,000+</span>
-            <span class="stat-label">Job Seekers</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">2,000+</span>
-            <span class="stat-label">Companies</span>
-          </div>
-        </div>
-      </div>
-      <div class="hero-image">
-        <div class="floating-card card-1">
-          <i class="fas fa-briefcase"></i>
-          <h4>Product Manager</h4>
-          <p>Tech Company</p>
-        </div>
-        <div class="floating-card card-2">
-          <i class="fas fa-code"></i>
-          <h4>Web Developer</h4>
-          <p>Startup</p>
-        </div>
-        <div class="floating-card card-3">
-          <i class="fas fa-chart-line"></i>
-          <h4>Data Analyst</h4>
-          <p>Finance Firm</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section class="features">
-    <div class="container">
-      <h2 class="section-title">How JobLink Works</h2>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-user-plus"></i>
-          </div>
-          <h3>Create Profile</h3>
-          <p>Job seekers build detailed profiles with skills, experience, and qualifications. Employers create company profiles.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-robot"></i>
-          </div>
-          <h3>Smart Matching</h3>
-          <p>Our AI algorithm matches job seekers with positions that fit their skills and career goals.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-handshake"></i>
-          </div>
-          <h3>Connect & Apply</h3>
-          <p>Apply directly to matched positions or receive applications from qualified candidates.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Testimonials -->
-  <section class="testimonials">
-    <div class="container">
-      <h2 class="section-title">Success Stories</h2>
-      <div class="testimonials-grid">
-        <div class="testimonial-card">
-          <!-- <div class="testimonial-content">
-            <p>"JobLink helped me find my dream job in just two weeks. The matching algorithm really understands what I'm looking for!"</p>
-          </div> -->
-          <!-- <div class="testimonial-author">
-            <img src="https://i.pravatar.cc/100?img=1" alt="Sarah Johnson"> -->
-            <!-- <div class="author-info">
-              <h4>Sarah Johnson</h4>
-              <p>Software Engineer at TechCorp</p>
-            </div> -->
-          </div>
-        </div>
-        <!-- <div class="testimonial-card">
-          <div class="testimonial-content">
-            <p>"As a hiring manager, JobMatch Connect has saved me countless hours. The quality of candidates we receive is exceptional."</p>
-          </div> -->
-          <!-- <div class="testimonial-author">
-            <img src="https://i.pravatar.cc/100?img=2" alt="Michael Chen">
-            <div class="author-info">
-              <h4>Michael Chen</h4>
-              <p>HR Director at Innovate Inc.</p>
+    <!-- Top Header Bar -->
+    <div class="top-header">
+        <div class="container">
+            <div class="header-left">
+                <span><i class="fas fa-phone"></i> +256 772 123 456</span>
+                <span><i class="fas fa-envelope"></i> info@joblink.com</span>
             </div>
-          </div> -->
+            <div class="header-right">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+            </div>
         </div>
-      </div>
     </div>
-  </section>
 
-  <!-- CTA Section -->
-  <section class="cta">
-    <div class="container">
-      <div class="cta-content">
-        <h2>Ready to Find Your Perfect Match?</h2>
-        <p>Join thousands of job seekers and employers who have found success with JobLink.</p>
-        <a href="register.html" class="btn btn-large">Get Started Today</a>
-      </div>
-    </div>
-  </section>
+    <!-- Main Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-handshake"></i>
+                <span class="brand-text">JobLink</span>
+                <span class="brand-tagline">Connecting Talent with Opportunity</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="jobs.html">Find Jobs</a></li>
+                <li><a href="employers.html">For Employers</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li class="nav-auth">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="register.html" class="btn-register">Register</a>
+                </li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-section">
-          <div class="logo">
-            <i class="fas fa-handshake"></i>
-            <span>JobLink</span>
-          </div>
-          <p>Connecting talent with opportunity through intelligent matching technology.</p>
-          <div class="social-links">
-            <a href="#"><i class="fab fa-facebook"></i></a>
-            <a href="#"><i class="fab fa-twitter"></i></a>
-            <a href="#"><i class="fab fa-linkedin"></i></a>
-            <a href="#"><i class="fab fa-instagram"></i></a>
-          </div>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-background">
+            <div class="hero-overlay"></div>
         </div>
-        <div class="footer-section">
-          <h3>For Job Seekers</h3>
-          <ul>
-            <li><a href="browse_jobs.html">Browse Jobs</a></li>
-            <li><a href="seeker_profile_setup.html">Create Profile</a></li>
-            <li><a href="help.html">Career Advice</a></li>
-          </ul>
-        </div>
-        <div class="footer-section">
-          <h3>For Employers</h3>
-          <ul>
-            <li><a href="job_posting_setup.html">Post a Job</a></li>
-            <li><a href="employer_profile_setup.html">Create Profile</a></li>
-            <li><a href="pricing.html">Pricing</a></li>
-          </ul>
-        </div>
-        <div class="footer-section">
-          <h3>Company</h3>
-          <ul>
-            <li><a href="about.html">About Us</a></li>
-            <li><a href="contact.html">Contact</a></li>
-            <li><a href="help_support.html">Help Center</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 JobLink. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">Find Your Dream Career Today</h1>
+                <p class="hero-subtitle">Connect with top employers and discover opportunities that match your skills and aspirations</p>
+                
+                <!-- Search Box -->
+                <div class="search-container">
+                    <div class="search-box">
+                        <div class="search-input">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="jobSearchInput" placeholder="Job title, keywords, or company">
+                            <div class="search-suggestions"></div>
+                        </div>
+                        <div class="search-input">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input type="text" id="locationSearchInput" placeholder="City or region">
+                        </div>
+                        <button class="search-btn" id="searchButton">
+                            <i class="fas fa-search"></i>
+                            Search Jobs
+                        </button>
+                    </div>
+                </div>
 
-  <script src="index.js"></script>
+                <!-- Quick Stats -->
+                <div class="hero-stats">
+                    <div class="stats-refresh">
+                        <button onclick="window.refreshStats()" class="btn-refresh" title="Refresh Statistics">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-jobs">15,000+</span>
+                        <span class="stat-label">Jobs Available</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-companies">5,000+</span>
+                        <span class="stat-label">Companies</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-seekers">50,000+</span>
+                        <span class="stat-label">Job Seekers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Job Categories -->
+    <section class="categories">
+        <div class="container">
+            <div class="section-header">
+                <h2>Popular Job Categories</h2>
+                <p>Explore opportunities in various fields</p>
+            </div>
+            <div class="categories-grid" id="categoriesGrid">
+                <!-- Categories will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>How JobLink Works</h2>
+                <p>Get started in three simple steps</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <div class="step-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <h3>Create Profile</h3>
+                    <p>Sign up and create your professional profile with skills and experience</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <div class="step-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Find Jobs</h3>
+                    <p>Browse thousands of job opportunities that match your qualifications</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <div class="step-icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                    <h3>Apply Now</h3>
+                    <p>Submit your application and connect with potential employers</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Jobs -->
+    <section class="featured-jobs">
+        <div class="container">
+            <div class="section-header">
+                <h2>Featured Jobs</h2>
+                <p>Latest opportunities from top companies</p>
+            </div>
+            <div class="jobs-grid" id="jobsGrid">
+                <!-- Jobs will be loaded dynamically from Firebase -->
+            </div>
+            <div class="section-footer">
+                <a href="jobs.html" class="btn-view-all">View All Jobs <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Take the Next Step in Your Career?</h2>
+                <p>Join thousands of professionals who found their dream jobs through JobLink</p>
+                <div class="cta-buttons">
+                    <a href="register.html" class="btn btn-primary">Start Your Journey</a>
+                    <a href="about.html" class="btn btn-secondary">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <i class="fas fa-handshake"></i>
+                        <span class="brand-text">JobLink</span>
+                    </div>
+                    <p class="footer-description">
+                        Connecting talented professionals with leading employers across Uganda and beyond.
+                    </p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="jobs.html">Find Jobs</a></li>
+                        <li><a href="employers.html">For Employers</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Job Seeker</h3>
+                    <ul class="footer-links">
+                        <li><a href="register.html">Create Account</a></li>
+                        <li><a href="jobs.html">Browse Jobs</a></li>
+                        <li><a href="#">Career Advice</a></li>
+                        <li><a href="#">Success Stories</a></li>
+                        <li><a href="#">Help Center</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Employer</h3>
+                    <ul class="footer-links">
+                        <li><a href="employer_register.html">Post Jobs</a></li>
+                        <li><a href="#">Browse Candidates</a></li>
+                        <li><a href="#">Pricing Plans</a></li>
+                        <li><a href="#">Employer Guide</a></li>
+                        <li><a href="#">Success Stories</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Contact Info</h3>
+                    <div class="contact-info">
+                        <p><i class="fas fa-map-marker-alt"></i> 123 Main Street, Kampala, Uganda</p>
+                        <p><i class="fas fa-phone"></i> +256 772 123 456</p>
+                        <p><i class="fas fa-envelope"></i> info@joblink.com</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p>&copy; 2024 JobLink. All rights reserved.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="index.js"></script>
 </body>
 </html>
