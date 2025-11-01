@@ -309,33 +309,24 @@ class EmployerDashboard {
         `;
     }
 
-    // FIXED: Added missing showJobDetails method
     showJobDetails(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
         if (job) {
-            // For now, just show a toast. You can expand this to show more details
             this.showToast(`Showing details for: ${job.title}`, 'info');
-            
-            // You can implement a detailed job view modal here
-            // this.showJobDetailModal(job);
         }
     }
 
-    // FIXED: Added method to handle edit job poster
     editJobPoster(jobId) {
         this.showToast('Redirecting to edit job page...', 'info');
-        // Redirect to job editing page
         setTimeout(() => {
             window.location.href = `job_posting.html?edit=${jobId}`;
         }, 1000);
     }
 
-    // Enhanced method to show job image modal
     showJobImageModal(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
         if (!job || !job.jobImageUrl) return;
 
-        // Create modal for job image
         const modal = document.createElement('div');
         modal.className = 'modal job-image-modal';
         modal.style.display = 'block';
@@ -353,7 +344,7 @@ class EmployerDashboard {
                     <img src="${job.jobImageUrl}" 
                          alt="${job.title || 'Job Poster'}" 
                          style="width: 100%; display: block;"
-                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #95a5a6;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
+                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
                 </div>
                 <div class="job-image-info">
                     <h4>${job.title || 'Untitled Job'}</h4>
@@ -372,7 +363,6 @@ class EmployerDashboard {
 
         document.body.appendChild(modal);
 
-        // Close modal events
         const closeBtn = modal.querySelector('.close-modal');
         closeBtn.addEventListener('click', () => {
             document.body.removeChild(modal);
@@ -385,7 +375,6 @@ class EmployerDashboard {
         });
     }
 
-    // FIXED: Updated bindJobCardEvents with proper method references
     bindJobCardEvents() {
         document.querySelectorAll('.job-card').forEach(card => {
             card.addEventListener('click', (e) => {
@@ -410,7 +399,6 @@ class EmployerDashboard {
             });
         });
 
-        // Add click event for job poster containers
         document.querySelectorAll('.job-poster-container').forEach(container => {
             container.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -419,7 +407,6 @@ class EmployerDashboard {
             });
         });
 
-        // Add click event for add-poster buttons
         document.querySelectorAll('.add-poster-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -429,7 +416,6 @@ class EmployerDashboard {
             });
         });
 
-        // Add click event for no-poster sections (but not the button)
         document.querySelectorAll('.no-poster').forEach(noPoster => {
             noPoster.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('add-poster-btn') && !e.target.closest('.add-poster-btn')) {
@@ -592,7 +578,6 @@ class EmployerDashboard {
     extractSalary(salaryString) {
         if (!salaryString) return null;
         
-        // Handle different salary formats
         const numbers = salaryString.match(/\d+/g);
         if (numbers && numbers.length >= 2) {
             return { min: parseInt(numbers[0]), max: parseInt(numbers[1]) };
@@ -653,6 +638,24 @@ class EmployerDashboard {
     }
 
     bindEvents() {
+        // Mobile navigation
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        
+        if (hamburger) {
+            hamburger.addEventListener('click', () => {
+                hamburger.classList.toggle('active');
+                navLinks.classList.toggle('active');
+            });
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    hamburger.classList.remove('active');
+                    navLinks.classList.remove('active');
+                });
+            });
+        }
+
         document.querySelectorAll('.stat-card').forEach((card) => {
             card.addEventListener('click', () => {
                 this.handleStatCardClick(card);
@@ -679,18 +682,15 @@ class EmployerDashboard {
             this.handleLogout();
         });
 
-        // Add event listener for "View All Applicants"
         document.getElementById('viewAllApplicants').addEventListener('click', (e) => {
             e.preventDefault();
             this.handleViewAllApplicants();
         });
 
-        // Bind candidate action buttons in modal
         this.bindCandidateActions();
     }
 
     bindCandidateActions() {
-        // Use event delegation for candidate buttons since they're dynamically loaded
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-view-profile') || e.target.closest('.btn-view-profile')) {
                 const btn = e.target.classList.contains('btn-view-profile') ? e.target : e.target.closest('.btn-view-profile');
@@ -708,10 +708,8 @@ class EmployerDashboard {
 
     async handleViewAllApplicants() {
         try {
-            // Show loading state
             this.showToast('Loading applicants...', 'info');
             
-            // Get all jobs for this employer
             const jobsQuery = query(
                 collection(db, 'jobs'),
                 where('employerId', '==', this.currentUser.uid)
@@ -725,7 +723,6 @@ class EmployerDashboard {
                 return;
             }
             
-            // Get all applications for these jobs
             const applications = [];
             for (const jobId of jobIds) {
                 const applicationsQuery = query(
@@ -744,15 +741,12 @@ class EmployerDashboard {
                 return;
             }
             
-            // Get job details and seeker details for each application
             const applicantsWithDetails = [];
             
             for (const application of applications) {
-                // Get job details
                 const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
                 const job = jobDoc.exists() ? jobDoc.data() : { title: 'Unknown Job' };
                 
-                // Get seeker details
                 const seekerDoc = await getDoc(doc(db, 'users', application.seekerId));
                 const seeker = seekerDoc.exists() ? seekerDoc.data() : { fullName: 'Unknown Seeker' };
                 
@@ -767,7 +761,6 @@ class EmployerDashboard {
                 });
             }
             
-            // Show applicants in a modal
             this.showApplicantsModal(applicantsWithDetails);
             
         } catch (error) {
@@ -784,13 +777,13 @@ class EmployerDashboard {
         let applicantsHTML = '';
         applicants.forEach(applicant => {
             applicantsHTML += `
-                <div class="applicant-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                <div class="applicant-card" style="border: 1px solid #f1f5f9; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: white;">
                     <div class="applicant-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                         <div>
-                            <h4 style="margin: 0; color: #2c3e50;">${applicant.seekerName || 'Unknown Seeker'}</h4>
-                            <p style="margin: 5px 0; color: #3498db; font-weight: 500;">Applied for: ${applicant.jobTitle}</p>
+                            <h4 style="margin: 0; color: #1e293b;">${applicant.seekerName || 'Unknown Seeker'}</h4>
+                            <p style="margin: 5px 0; color: #2563eb; font-weight: 500;">Applied for: ${applicant.jobTitle}</p>
                         </div>
-                        <div style="color: #95a5a6; font-size: 0.9rem;">
+                        <div style="color: #64748b; font-size: 0.9rem;">
                             ${applicant.appliedAt?.toDate ? applicant.appliedAt.toDate().toLocaleDateString() : 'Unknown date'}
                         </div>
                     </div>
@@ -804,8 +797,8 @@ class EmployerDashboard {
                     
                     ${applicant.coverLetter ? `
                     <div class="cover-letter" style="margin-bottom: 15px;">
-                        <h5 style="margin: 0 0 8px 0; color: #2c3e50;">Cover Letter</h5>
-                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 3px solid #3498db;">
+                        <h5 style="margin: 0 0 8px 0; color: #1e293b;">Cover Letter</h5>
+                        <div style="background: #f8fafc; padding: 10px; border-radius: 5px; border-left: 3px solid #2563eb;">
                             ${applicant.coverLetter}
                         </div>
                     </div>
@@ -813,10 +806,10 @@ class EmployerDashboard {
                     
                     ${applicant.seekerSkills.length > 0 ? `
                     <div class="applicant-skills" style="margin-bottom: 15px;">
-                        <h5 style="margin: 0 0 8px 0; color: #2c3e50;">Skills</h5>
+                        <h5 style="margin: 0 0 8px 0; color: #1e293b;">Skills</h5>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             ${applicant.seekerSkills.map(skill => 
-                                `<span style="background: #3498db; color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.8rem;">${skill}</span>`
+                                `<span style="background: #2563eb; color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.8rem;">${skill}</span>`
                             ).join('')}
                         </div>
                     </div>
@@ -825,13 +818,13 @@ class EmployerDashboard {
                     <div class="applicant-actions" style="display: flex; gap: 10px;">
                         ${applicant.seekerResume ? `
                         <button class="btn-view-resume" data-resume-url="${applicant.seekerResume}" 
-                                style="background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                             <i class="fas fa-file-pdf"></i> View Resume
                         </button>
                         ` : ''}
                         
                         <button class="btn-contact-applicant" data-applicant-email="${applicant.seekerEmail}"
-                                style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                             <i class="fas fa-envelope"></i> Contact
                         </button>
                     </div>
@@ -847,7 +840,7 @@ class EmployerDashboard {
                 </div>
                 <div class="modal-body">
                     ${applicants.length > 0 ? applicantsHTML : `
-                        <div style="text-align: center; padding: 40px; color: #95a5a6;">
+                        <div style="text-align: center; padding: 40px; color: #64748b;">
                             <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px;"></i>
                             <h4>No Applicants Found</h4>
                             <p>No one has applied to your jobs yet.</p>
@@ -859,7 +852,6 @@ class EmployerDashboard {
 
         document.body.appendChild(modal);
 
-        // Close modal events
         const closeBtn = modal.querySelector('.close-modal');
         closeBtn.addEventListener('click', () => {
             document.body.removeChild(modal);
@@ -871,7 +863,6 @@ class EmployerDashboard {
             }
         });
 
-        // Bind resume and contact buttons
         modal.querySelectorAll('.btn-view-resume').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.viewResume(btn.dataset.resumeUrl);

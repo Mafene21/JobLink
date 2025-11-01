@@ -1,38 +1,18 @@
 // Firebase configuration
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged,
-  signOut 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  where, 
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  orderBy,
-  Timestamp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
-  authDomain: "joblink-babb6.firebaseapp.com",
-  projectId: "joblink-babb6",
-  storageBucket: "joblink-babb6.firebasestorage.app",
-  messagingSenderId: "442169381701",
-  appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
-  measurementId: "G-Z0737HMGCQ"
+    apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
+    authDomain: "joblink-babb6.firebaseapp.com",
+    projectId: "joblink-babb6",
+    storageBucket: "joblink-babb6.firebasestorage.app",
+    messagingSenderId: "442169381701",
+    appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
+    measurementId: "G-Z0737HMGCQ"
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 class ManageApplicants {
     constructor() {
@@ -62,23 +42,26 @@ class ManageApplicants {
     }
 
     async checkAuthState() {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                this.currentUser = user;
-                console.log('User authenticated:', user.uid);
-                await this.loadJobs();
-                await this.loadApplications();
-                this.updateStats();
-            } else {
-                window.location.href = 'login.html';
-            }
+        return new Promise((resolve) => {
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    this.currentUser = user;
+                    console.log('User authenticated:', user.uid);
+                    await this.loadJobs();
+                    await this.loadApplications();
+                    this.updateStats();
+                } else {
+                    window.location.href = 'login.html';
+                }
+                resolve();
+            });
         });
     }
 
     async loadCompanyData() {
         try {
-            const companyDoc = await getDoc(doc(db, 'companies', this.currentUser.uid));
-            if (companyDoc.exists()) {
+            const companyDoc = await db.collection('companies').doc(this.currentUser.uid).get();
+            if (companyDoc.exists) {
                 this.companyData = companyDoc.data();
                 this.updateCompanyLogo();
             }
@@ -96,12 +79,9 @@ class ManageApplicants {
 
     async loadJobs() {
         try {
-            const jobsQuery = query(
-                collection(db, 'jobs'),
-                where('employerId', '==', this.currentUser.uid)
-            );
+            const jobsQuery = db.collection('jobs').where('employerId', '==', this.currentUser.uid);
+            const querySnapshot = await jobsQuery.get();
             
-            const querySnapshot = await getDocs(jobsQuery);
             this.jobs = [];
             querySnapshot.forEach((doc) => {
                 this.jobs.push({ id: doc.id, ...doc.data() });
@@ -139,14 +119,10 @@ class ManageApplicants {
             const applications = [];
             
             for (const job of this.jobs) {
-                const applicationsQuery = query(
-                    collection(db, 'applications'),
-                    where('jobId', '==', job.id)
-                );
+                const applicationsQuery = db.collection('applications').where('jobId', '==', job.id);
+                const applicationsSnapshot = await applicationsQuery.get();
                 
-                const applicationsSnapshot = await getDocs(applicationsQuery);
-                
-                for (const appDoc of applicationsSnapshot.docs) {
+                applicationsSnapshot.forEach((appDoc) => {
                     const applicationData = appDoc.data();
                     console.log('Raw application data:', applicationData);
                     
@@ -160,11 +136,16 @@ class ManageApplicants {
                     };
                     
                     // Load applicant data - try multiple collection names
-                    application.applicant = await this.loadApplicantData(application.seekerId || application.applicantId);
+                    application.applicant = this.loadApplicantData(application.seekerId || application.applicantId);
                     
                     applications.push(application);
-                }
+                });
             }
+            
+            // Wait for all applicant data to load
+            await Promise.all(applications.map(async (app, index) => {
+                applications[index].applicant = await app.applicant;
+            }));
             
             this.applications = applications;
             console.log('All loaded applications:', this.applications);
@@ -192,8 +173,8 @@ class ManageApplicants {
             
             for (const collectionName of collections) {
                 try {
-                    const applicantDoc = await getDoc(doc(db, collectionName, applicantId));
-                    if (applicantDoc.exists()) {
+                    const applicantDoc = await db.collection(collectionName).doc(applicantId).get();
+                    if (applicantDoc.exists) {
                         applicantData = applicantDoc.data();
                         console.log(`Found applicant in ${collectionName}:`, applicantData);
                         break;
@@ -705,7 +686,7 @@ class ManageApplicants {
         try {
             const updateData = {
                 status: newStatus,
-                updatedAt: Timestamp.now()
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             if (notes) {
@@ -713,10 +694,10 @@ class ManageApplicants {
             }
 
             if (newStatus === 'interview' && interviewDate) {
-                updateData.interviewDate = Timestamp.fromDate(new Date(interviewDate));
+                updateData.interviewDate = firebase.firestore.Timestamp.fromDate(new Date(interviewDate));
             }
 
-            await updateDoc(doc(db, 'applications', applicationId), updateData);
+            await db.collection('applications').doc(applicationId).update(updateData);
             
             this.hideModal('statusModal');
             this.showToast('Application status updated successfully');
@@ -873,6 +854,29 @@ class ManageApplicants {
     }
 
     bindEvents() {
+        // Mobile navigation
+        const hamburger = document.querySelector('.hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        const overlay = document.getElementById('overlay');
+        
+        hamburger.addEventListener('click', () => {
+            mobileNav.classList.toggle('active');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
+        });
+        
+        overlay.addEventListener('click', () => {
+            mobileNav.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+        
+        // Mobile logout
+        document.getElementById('mobileLogoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleLogout();
+        });
+
         // Filter events
         document.getElementById('applicantSearch').addEventListener('input', (e) => {
             this.filters.search = e.target.value;
@@ -1057,7 +1061,7 @@ class ManageApplicants {
 
     async handleLogout() {
         try {
-            await signOut(auth);
+            await auth.signOut();
             window.location.href = 'login.html';
         } catch (error) {
             console.error('Error signing out:', error);
@@ -1066,6 +1070,7 @@ class ManageApplicants {
     }
 }
 
+// Initialize the application
 let manageApplicants;
 document.addEventListener('DOMContentLoaded', function() {
     manageApplicants = new ManageApplicants();

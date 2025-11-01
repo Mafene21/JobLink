@@ -57,6 +57,29 @@ class CompanyProfile {
     }
 
     bindEvents() {
+        // Mobile navigation
+        const hamburger = document.querySelector('.hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        const overlay = document.getElementById('overlay');
+        
+        hamburger.addEventListener('click', () => {
+            mobileNav.classList.toggle('active');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
+        });
+        
+        overlay.addEventListener('click', () => {
+            mobileNav.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+        
+        // Mobile logout
+        document.getElementById('mobileLogoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleLogout();
+        });
+
         // Section navigation
         document.querySelectorAll('.nav-section').forEach(button => {
             button.addEventListener('click', (e) => {

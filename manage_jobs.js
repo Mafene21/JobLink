@@ -182,6 +182,7 @@ class ManageJobs {
 
     async loadJobs() {
         const tableBody = document.getElementById('jobsTableBody');
+        const mobileCards = document.getElementById('mobileJobsCards');
         
         try {
             tableBody.innerHTML = `
@@ -191,6 +192,13 @@ class ManageJobs {
                         <span>Loading jobs...</span>
                     </td>
                 </tr>
+            `;
+            
+            mobileCards.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading jobs...</span>
+                </div>
             `;
 
             console.log('Loading jobs for employer:', this.currentUser.uid);
@@ -226,10 +234,12 @@ class ManageJobs {
             
             this.applyFilters();
             this.renderTable();
+            this.renderMobileCards();
             
         } catch (error) {
             console.error('Error loading jobs:', error);
             this.showErrorState(tableBody, error);
+            this.showErrorState(mobileCards, error);
         }
     }
 
@@ -274,6 +284,7 @@ class ManageJobs {
                     
                     // Update the view count in the table with animation
                     this.updateViewCountInTable(jobId, newViewCount, oldViewCount);
+                    this.updateViewCountInCard(jobId, newViewCount, oldViewCount);
                     
                     // Update stats
                     this.updateStats();
@@ -297,6 +308,21 @@ class ManageJobs {
             
             viewCountElement.textContent = newCount;
             viewCountElement.title = `${newCount} views`;
+        }
+    }
+
+    updateViewCountInCard(jobId, newCount, oldCount) {
+        const viewCountElement = document.querySelector(`.job-card[data-job-id="${jobId}"] .job-card-stat-value.view-count`);
+        if (viewCountElement) {
+            // Add animation class if count increased
+            if (newCount > oldCount) {
+                viewCountElement.classList.add('increasing');
+                setTimeout(() => {
+                    viewCountElement.classList.remove('increasing');
+                }, 1000);
+            }
+            
+            viewCountElement.textContent = newCount;
         }
     }
 
@@ -375,6 +401,38 @@ class ManageJobs {
         this.updateBulkActions();
     }
 
+    renderMobileCards() {
+        const mobileCards = document.getElementById('mobileJobsCards');
+        
+        if (this.filteredJobs.length === 0) {
+            mobileCards.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-briefcase"></i>
+                    <h3>No Jobs Found</h3>
+                    <p>No jobs match your current filters. Try adjusting your search criteria.</p>
+                    <button class="btn btn-primary" onclick="manageJobs.clearFilters()">
+                        Clear Filters
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        const startIndex = (this.currentPage - 1) * this.jobsPerPage;
+        const endIndex = startIndex + this.jobsPerPage;
+        const paginatedJobs = this.filteredJobs.slice(startIndex, endIndex);
+
+        let cardsHTML = '';
+        
+        paginatedJobs.forEach(job => {
+            const isSelected = this.selectedJobs.has(job.id);
+            cardsHTML += this.createMobileCard(job, isSelected);
+        });
+
+        mobileCards.innerHTML = cardsHTML;
+        this.bindMobileCardEvents();
+    }
+
     createTableRow(job, isSelected) {
         const createdAt = job.createdAt;
         const formattedDate = this.formatDate(createdAt);
@@ -430,6 +488,74 @@ class ManageJobs {
                     </div>
                 </td>
             </tr>
+        `;
+    }
+
+    createMobileCard(job, isSelected) {
+        const createdAt = job.createdAt;
+        const formattedDate = this.formatDate(createdAt);
+        const statusBadge = this.getStatusBadge(job.status);
+        const applicantCount = job.applicantCount || 0;
+        const viewCount = job.viewCount || 0;
+
+        return `
+            <div class="job-card" data-job-id="${job.id}">
+                <div class="job-card-header">
+                    <div>
+                        <div class="job-card-title">${job.title || 'Untitled Job'}</div>
+                        <div class="job-card-meta">
+                            <div class="job-card-meta-item">
+                                <i class="fas fa-briefcase"></i>
+                                <span>${this.formatJobType(job.type)}</span>
+                            </div>
+                            <div class="job-card-meta-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>${job.location || 'Remote'}</span>
+                            </div>
+                            <div class="job-card-meta-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>${formattedDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        ${statusBadge}
+                    </div>
+                </div>
+                
+                <div class="job-card-stats">
+                    <div class="job-card-stat">
+                        <span class="job-card-stat-value applicant-count">${applicantCount}</span>
+                        <span class="job-card-stat-label">Applicants</span>
+                    </div>
+                    <div class="job-card-stat">
+                        <span class="job-card-stat-value view-count">${viewCount}</span>
+                        <span class="job-card-stat-label">Views</span>
+                    </div>
+                </div>
+                
+                <div class="job-card-actions">
+                    <div class="job-card-checkbox">
+                        <input type="checkbox" class="job-checkbox" ${isSelected ? 'checked' : ''} data-job-id="${job.id}">
+                    </div>
+                    <div class="job-card-action-buttons">
+                        <button class="btn-icon btn-view" data-job-id="${job.id}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon btn-edit" data-job-id="${job.id}" title="Edit Job">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" data-job-id="${job.id}" title="Delete Job">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        ${job.status !== 'closed' ? `
+                        <button class="btn-status" data-job-id="${job.id}" data-current-status="${job.status}">
+                            ${job.status === 'active' ? 'Pause' : 'Activate'}
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
         `;
     }
 
@@ -518,6 +644,51 @@ class ManageJobs {
         });
     }
 
+    bindMobileCardEvents() {
+        // Checkbox events
+        document.querySelectorAll('.job-card .job-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const jobId = e.target.dataset.jobId;
+                if (e.target.checked) {
+                    this.selectedJobs.add(jobId);
+                } else {
+                    this.selectedJobs.delete(jobId);
+                }
+                this.updateBulkActions();
+            });
+        });
+
+        // Action button events
+        document.querySelectorAll('.job-card .btn-view').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const jobId = e.target.closest('.btn-view').dataset.jobId;
+                this.showJobDetails(jobId);
+            });
+        });
+
+        document.querySelectorAll('.job-card .btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const jobId = e.target.closest('.btn-edit').dataset.jobId;
+                this.editJob(jobId);
+            });
+        });
+
+        document.querySelectorAll('.job-card .btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const jobId = e.target.closest('.btn-delete').dataset.jobId;
+                this.showDeleteConfirmation(jobId);
+            });
+        });
+
+        document.querySelectorAll('.job-card .btn-status').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const jobId = e.target.closest('.btn-status').dataset.jobId;
+                const currentStatus = e.target.closest('.btn-status').dataset.currentStatus;
+                this.toggleJobStatus(jobId, currentStatus);
+            });
+        });
+    }
+
     renderPagination() {
         const pagination = document.getElementById('pagination');
         const totalPages = Math.ceil(this.filteredJobs.length / this.jobsPerPage);
@@ -573,6 +744,7 @@ class ManageJobs {
     goToPage(page) {
         this.currentPage = page;
         this.renderTable();
+        this.renderMobileCards();
     }
 
     updateBulkActions() {
@@ -814,6 +986,7 @@ class ManageJobs {
             
             this.applyFilters();
             this.renderTable();
+            this.renderMobileCards();
             this.updateStats();
             
         } catch (error) {
@@ -841,6 +1014,7 @@ class ManageJobs {
             
             this.applyFilters();
             this.renderTable();
+            this.renderMobileCards();
             this.updateStats();
             
         } catch (error) {
@@ -850,6 +1024,27 @@ class ManageJobs {
     }
 
     bindEvents() {
+        // Mobile menu toggle
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+        
+        if (hamburger) {
+            hamburger.addEventListener('click', () => {
+                hamburger.classList.toggle('active');
+                navLinks.classList.toggle('active');
+                mobileMenuOverlay.classList.toggle('active');
+            });
+        }
+        
+        if (mobileMenuOverlay) {
+            mobileMenuOverlay.addEventListener('click', () => {
+                hamburger.classList.remove('active');
+                navLinks.classList.remove('active');
+                mobileMenuOverlay.classList.remove('active');
+            });
+        }
+
         // Select all checkbox
         const selectAllCheckbox = document.getElementById('selectAllJobs');
         if (selectAllCheckbox) {
@@ -876,6 +1071,7 @@ class ManageJobs {
                 this.currentPage = 1;
                 this.applyFilters();
                 this.renderTable();
+                this.renderMobileCards();
             });
         }
 
@@ -886,6 +1082,7 @@ class ManageJobs {
                 this.currentPage = 1;
                 this.applyFilters();
                 this.renderTable();
+                this.renderMobileCards();
             });
         }
 
@@ -896,6 +1093,7 @@ class ManageJobs {
                 this.currentPage = 1;
                 this.applyFilters();
                 this.renderTable();
+                this.renderMobileCards();
             });
         }
 
@@ -905,6 +1103,7 @@ class ManageJobs {
                 this.filters.sortBy = e.target.value;
                 this.applyFilters();
                 this.renderTable();
+                this.renderMobileCards();
             });
         }
 
@@ -1004,6 +1203,7 @@ class ManageJobs {
         this.currentPage = 1;
         this.applyFilters();
         this.renderTable();
+        this.renderMobileCards();
     }
 
     async bulkUpdateStatus(newStatus) {
@@ -1030,6 +1230,7 @@ class ManageJobs {
             this.selectedJobs.clear();
             this.applyFilters();
             this.renderTable();
+            this.renderMobileCards();
             this.updateStats();
             
         } catch (error) {
@@ -1102,6 +1303,7 @@ class ManageJobs {
             
             this.applyFilters();
             this.renderTable();
+            this.renderMobileCards();
             this.updateStats();
             
         } catch (error) {
@@ -1145,19 +1347,17 @@ class ManageJobs {
         }, 3000);
     }
 
-    showErrorState(tableBody, error) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="9" class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Error Loading Jobs</h3>
-                    <p>There was a problem loading your job postings. Please try again.</p>
-                    <button class="btn btn-primary" onclick="manageJobs.loadJobs()">
-                        <i class="fas fa-refresh"></i>
-                        Try Again
-                    </button>
-                </td>
-            </tr>
+    showErrorState(element, error) {
+        element.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error Loading Jobs</h3>
+                <p>There was a problem loading your job postings. Please try again.</p>
+                <button class="btn btn-primary" onclick="manageJobs.loadJobs()">
+                    <i class="fas fa-refresh"></i>
+                    Try Again
+                </button>
+            </div>
         `;
     }
 

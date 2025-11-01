@@ -6,6 +6,11 @@
   <title>Manage Applicants | JobLink</title>
   <link rel="stylesheet" href="manage_applicants.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
   <!-- Navigation -->
@@ -37,6 +42,22 @@
       </div>
     </div>
   </nav>
+
+  <!-- Mobile Navigation -->
+  <div class="mobile-nav" id="mobileNav">
+    <ul class="mobile-nav-links">
+      <li><a href="employer_dashboard.html" class="mobile-nav-link">Dashboard</a></li>
+      <li><a href="job_posting.html" class="mobile-nav-link">Post Job</a></li>
+      <li><a href="manage_jobs.html" class="mobile-nav-link">Manage Jobs</a></li>
+      <li><a href="#" class="mobile-nav-link active">Applicants</a></li>
+      <li><a href="employer_profile.html" class="mobile-nav-link">Company Profile</a></li>
+      <li class="mobile-nav-divider"></li>
+      <li><a href="login.html" class="mobile-nav-link" id="mobileLogoutBtn">Logout</a></li>
+    </ul>
+  </div>
+
+  <!-- Overlay for mobile menu -->
+  <div class="overlay" id="overlay"></div>
 
   <!-- Main Content -->
   <div class="manage-applicants-container">
@@ -338,6 +359,6 @@
     </div>
   </div>
 
-  <script type="module" src="manage_applicants.js"></script>
+  <script src="manage_applicants.js"></script>
 </body>
 </html>

@@ -95,6 +95,7 @@ body {
   display: none;
   flex-direction: column;
   cursor: pointer;
+  z-index: 101;
 }
 
 .bar {
@@ -103,6 +104,66 @@ body {
   background: var(--dark);
   margin: 3px 0;
   transition: var(--transition);
+}
+
+/* Mobile Navigation */
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background: var(--white);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: var(--transition);
+  padding-top: 80px;
+  overflow-y: auto;
+}
+
+.mobile-nav.active {
+  right: 0;
+}
+
+.mobile-nav-links {
+  list-style: none;
+  padding: 0 20px;
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 15px 0;
+  text-decoration: none;
+  color: var(--dark);
+  font-weight: 500;
+  border-bottom: 1px solid var(--light);
+  transition: var(--transition);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  color: var(--primary);
+}
+
+.mobile-nav-divider {
+  height: 1px;
+  background: var(--light);
+  margin: 10px 0;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  display: none;
+}
+
+.overlay.active {
+  display: block;
 }
 
 /* Browse Container */
@@ -404,7 +465,7 @@ body {
   line-height: 1.5;
   margin-bottom: 15px;
   display: -webkit-box;
-  /* -webkit-line-clamp: 2; */
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -951,6 +1012,10 @@ body {
     font-size: 2rem;
   }
   
+  .header-content p {
+    font-size: 1rem;
+  }
+  
   .search-input-container {
     flex-direction: column;
     gap: 10px;
@@ -974,6 +1039,7 @@ body {
   .jobs-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 15px;
   }
   
   .job-header {
@@ -1009,6 +1075,14 @@ body {
   .modal-body {
     padding: 20px;
   }
+  
+  .job-meta {
+    gap: 10px;
+  }
+  
+  .job-meta-item {
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1024,13 +1098,25 @@ body {
     padding: 40px 20px;
   }
   
+  .empty-state h2 {
+    font-size: 1.5rem;
+  }
+  
+  .empty-state p {
+    font-size: 1rem;
+  }
+  
   .jobs-header,
   .job-card {
     padding: 20px;
   }
   
-  .job-meta {
-    gap: 10px;
+  .job-title {
+    font-size: 1.1rem;
+  }
+  
+  .job-company {
+    font-size: 0.9rem;
   }
   
   .modal-body {
@@ -1043,5 +1129,75 @@ body {
   
   .modal-footer {
     padding: 15px 20px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+  
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .salary-amount {
+    font-size: 1rem;
+  }
+  
+  .job-description {
+    font-size: 0.9rem;
+  }
+}
+
+/* Additional Mobile Optimizations */
+@media (max-width: 768px) {
+  .search-filters-section {
+    margin-bottom: 20px;
+  }
+  
+  .jobs-content {
+    min-height: 300px;
+  }
+  
+  .job-actions .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .sort-options {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .sort-options select {
+    flex: 1;
+    margin-left: 10px;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .job-card:hover {
+    background: var(--white);
+  }
+  
+  .btn:hover {
+    transform: none;
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .job-card {
+    border: 2px solid var(--light);
+  }
+  
+  .skill-tag {
+    border: 1px solid var(--primary);
   }
 }

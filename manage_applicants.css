@@ -119,6 +119,7 @@ body {
   display: none;
   flex-direction: column;
   cursor: pointer;
+  z-index: 101;
 }
 
 .bar {
@@ -127,6 +128,66 @@ body {
   background: var(--dark);
   margin: 3px 0;
   transition: var(--transition);
+}
+
+/* Mobile Navigation */
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background: var(--white);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: var(--transition);
+  padding-top: 80px;
+  overflow-y: auto;
+}
+
+.mobile-nav.active {
+  right: 0;
+}
+
+.mobile-nav-links {
+  list-style: none;
+  padding: 0 20px;
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 15px 0;
+  text-decoration: none;
+  color: var(--dark);
+  font-weight: 500;
+  border-bottom: 1px solid var(--light);
+  transition: var(--transition);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  color: var(--primary);
+}
+
+.mobile-nav-divider {
+  height: 1px;
+  background: var(--light);
+  margin: 10px 0;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  display: none;
+}
+
+.overlay.active {
+  display: block;
 }
 
 /* Manage Applicants Container */
@@ -455,7 +516,7 @@ body {
 
 .applicant-header {
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 15px;
 }
@@ -1210,24 +1271,6 @@ body {
   .modal-footer {
     flex-direction: column;
   }
-}
-
-@media (max-width: 480px) {
-  .manage-applicants-container {
-    padding: 20px 15px;
-  }
-  
-  .stats-overview {
-    grid-template-columns: 1fr;
-  }
-  
-  .filters-section {
-    padding: 20px;
-  }
-  
-  .applicants-container {
-    padding: 20px;
-  }
   
   .applicant-header {
     flex-direction: column;
@@ -1247,9 +1290,32 @@ body {
     justify-content: center;
   }
   
+  .filter-actions {
+    justify-content: center;
+  }
+  
   .pagination {
     flex-direction: column;
     align-items: center;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .manage-applicants-container {
+    padding: 20px 15px;
+  }
+  
+  .stats-overview {
+    grid-template-columns: 1fr;
+  }
+  
+  .filters-section {
+    padding: 20px;
+  }
+  
+  .applicants-container {
+    padding: 20px;
   }
   
   .modal-body {
@@ -1265,55 +1331,87 @@ body {
     right: 15px;
     left: 15px;
   }
+  
+  .btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+  
+  .applicant-card {
+    padding: 20px;
+  }
+  
+  .applicant-meta {
+    gap: 10px;
+  }
+  
+  .applicant-meta-item {
+    font-size: 0.8rem;
+  }
+  
+  .section-header {
+    padding: 20px;
+  }
+  
+  .stat-card {
+    padding: 20px;
+  }
+  
+  .stat-info h3 {
+    font-size: 1.5rem;
+  }
 }
 
-/* Utility Classes */
-.text-center {
-  text-align: center;
+/* Additional Mobile Optimizations */
+@media (max-width: 768px) {
+  .search-box input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .filter-select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .applicant-actions .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .action-buttons .btn {
+    flex: 1;
+    min-width: 140px;
+  }
 }
 
-.mb-20 {
-  margin-bottom: 20px;
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .applicant-card:hover {
+    background: var(--light-gray);
+    transform: none;
+  }
+  
+  .btn:hover {
+    transform: none;
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    transform: none;
+  }
+  
+  .stat-card:hover {
+    transform: none;
+  }
 }
 
-.mt-20 {
-  margin-top: 20px;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.visible {
-  display: block !important;
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-column {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.gap-10 {
-  gap: 10px;
-}
-
-.gap-15 {
-  gap: 15px;
-}
-
-.gap-20 {
-  gap: 20px;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .applicant-card {
+    border: 2px solid var(--light);
+  }
+  
+  .skill-tag {
+    border: 1px solid var(--primary);
+  }
 }
 
 /* Print Styles */
@@ -1323,7 +1421,8 @@ body {
   .filters-section,
   .section-actions,
   .applicant-actions,
-  .pagination {
+  .pagination,
+  .applicant-details-sidebar {
     display: none;
   }
   

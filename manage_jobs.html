@@ -38,6 +38,9 @@
     </div>
   </nav>
 
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
   <!-- Main Content -->
   <div class="manage-jobs-container">
     <!-- Page Header -->
@@ -48,7 +51,7 @@
       </div>
       <button class="btn btn-primary" id="postNewJobBtn">
         <i class="fas fa-plus"></i>
-        Post New Job
+        <span class="btn-text">Post New Job</span>
       </button>
     </div>
 
@@ -129,7 +132,7 @@
 
         <button class="btn btn-outline" id="clearFilters">
           <i class="fas fa-times"></i>
-          Clear Filters
+          <span class="btn-text">Clear Filters</span>
         </button>
       </div>
     </div>
@@ -141,11 +144,11 @@
         <div class="table-actions">
           <button class="btn btn-outline" id="exportJobs">
             <i class="fas fa-download"></i>
-            Export
+            <span class="btn-text">Export</span>
           </button>
           <button class="btn btn-outline" id="refreshJobs">
             <i class="fas fa-sync-alt"></i>
-            Refresh
+            <span class="btn-text">Refresh</span>
           </button>
         </div>
       </div>
@@ -179,6 +182,11 @@
         </table>
       </div>
 
+      <!-- Mobile Jobs Cards (Hidden on desktop) -->
+      <div class="mobile-jobs-cards" id="mobileJobsCards">
+        <!-- Jobs will be loaded here as cards on mobile -->
+      </div>
+
       <!-- Bulk Actions -->
       <div class="bulk-actions" id="bulkActions" style="display: none;">
         <div class="bulk-actions-content">
@@ -186,19 +194,19 @@
           <div class="bulk-buttons">
             <button class="btn btn-outline" id="bulkActivate">
               <i class="fas fa-play"></i>
-              Activate
+              <span class="btn-text">Activate</span>
             </button>
             <button class="btn btn-outline" id="bulkPause">
               <i class="fas fa-pause"></i>
-              Pause
+              <span class="btn-text">Pause</span>
             </button>
             <button class="btn btn-outline" id="bulkClose">
               <i class="fas fa-stop"></i>
-              Close
+              <span class="btn-text">Close</span>
             </button>
             <button class="btn btn-danger" id="bulkDelete">
               <i class="fas fa-trash"></i>
-              Delete
+              <span class="btn-text">Delete</span>
             </button>
           </div>
         </div>
@@ -227,7 +235,7 @@
         <button class="btn btn-secondary" id="closeJobDetails">Close</button>
         <button class="btn btn-primary" id="editJobBtn">
           <i class="fas fa-edit"></i>
-          Edit Job
+          <span class="btn-text">Edit Job</span>
         </button>
       </div>
     </div>
@@ -254,7 +262,7 @@
         <button class="btn btn-secondary" id="cancelDelete">Cancel</button>
         <button class="btn btn-danger" id="confirmDelete">
           <i class="fas fa-trash"></i>
-          Delete Job
+          <span class="btn-text">Delete Job</span>
         </button>
       </div>
     </div>
@@ -278,7 +286,7 @@
         <button class="btn btn-secondary" id="cancelBulkDelete">Cancel</button>
         <button class="btn btn-danger" id="confirmBulkDelete">
           <i class="fas fa-trash"></i>
-          Delete Selected Jobs
+          <span class="btn-text">Delete Selected Jobs</span>
         </button>
       </div>
     </div>
