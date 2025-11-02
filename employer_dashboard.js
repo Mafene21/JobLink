@@ -646,12 +646,20 @@ class EmployerDashboard {
             hamburger.addEventListener('click', () => {
                 hamburger.classList.toggle('active');
                 navLinks.classList.toggle('active');
+                
+                // Add overlay when menu is open
+                if (navLinks.classList.contains('active')) {
+                    this.createMenuOverlay();
+                } else {
+                    this.removeMenuOverlay();
+                }
             });
             
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', () => {
                     hamburger.classList.remove('active');
                     navLinks.classList.remove('active');
+                    this.removeMenuOverlay();
                 });
             });
         }
@@ -688,6 +696,31 @@ class EmployerDashboard {
         });
 
         this.bindCandidateActions();
+    }
+
+    createMenuOverlay() {
+        // Remove existing overlay if any
+        this.removeMenuOverlay();
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'menu-overlay active';
+        document.body.appendChild(overlay);
+        
+        overlay.addEventListener('click', () => {
+            const hamburger = document.querySelector('.hamburger');
+            const navLinks = document.querySelector('.nav-links');
+            
+            hamburger.classList.remove('active');
+            navLinks.classList.remove('active');
+            this.removeMenuOverlay();
+        });
+    }
+
+    removeMenuOverlay() {
+        const overlay = document.querySelector('.menu-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
     }
 
     bindCandidateActions() {
