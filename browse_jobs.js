@@ -55,25 +55,40 @@ class AppliedJobs {
 
     async init() {
         await this.checkAuthState();
-        this.bindEvents();
         this.initMobileMenu();
+        this.bindEvents();
     }
 
     initMobileMenu() {
         const hamburger = document.getElementById('hamburgerMenu');
         const navLinks = document.getElementById('navLinks');
 
+        console.log('Initializing mobile menu...');
+        console.log('Hamburger:', hamburger);
+        console.log('Nav links:', navLinks);
+
         if (hamburger && navLinks) {
-            hamburger.addEventListener('click', () => {
+            hamburger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log('Hamburger clicked');
                 navLinks.classList.toggle('active');
                 hamburger.classList.toggle('active');
+                
+                // Prevent body scroll when menu is open
+                if (navLinks.classList.contains('active')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
             });
 
             // Close menu when clicking on a link
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', () => {
+                    console.log('Nav link clicked');
                     navLinks.classList.remove('active');
                     hamburger.classList.remove('active');
+                    document.body.style.overflow = '';
                 });
             });
 
@@ -82,8 +97,20 @@ class AppliedJobs {
                 if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
                     navLinks.classList.remove('active');
                     hamburger.classList.remove('active');
+                    document.body.style.overflow = '';
                 }
             });
+
+            // Close menu on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    navLinks.classList.remove('active');
+                    hamburger.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+        } else {
+            console.error('Mobile menu elements not found');
         }
     }
 
