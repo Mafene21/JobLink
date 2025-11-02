@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       setTimeout(() => {
         if (userType === 'employer') {
-          window.location.href = 'employer_dashboard.html';
+          window.location.href = 'employerdashboard.html';
         } else {
           window.location.href = 'seeker_dashboard.html';
         }

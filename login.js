@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
       showSuccess('Account setup complete! Redirecting to your dashboard...');
       
       setTimeout(() => {
-        window.location.href = 'seeker_dashboard.html';
+        window.location.href = 'seekerdashboard.html';
       }, 1500);
       
     } catch (error) {
