@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- Top Header Bar -->
     <div class="top-header">
         <div class="container">
@@ -51,137 +54,192 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-background">
-            <div class="hero-overlay"></div>
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-background">
+                <div class="hero-overlay"></div>
+            </div>
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Find Your Dream Career Today</h1>
+                    <p class="hero-subtitle">Connect with top employers and discover opportunities that match your skills and aspirations</p>
+                    
+                    <!-- Search Box -->
+                    <div class="search-container" role="search">
+                        <div class="search-box">
+                            <div class="search-input">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="jobSearchInput" placeholder="Job title, keywords, or company" aria-label="Search jobs">
+                                <div class="search-suggestions" id="searchSuggestions"></div>
+                            </div>
+                            <div class="search-input">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <input type="text" id="locationSearchInput" placeholder="City or region" aria-label="Job location">
+                            </div>
+                            <button class="search-btn" id="searchButton">
+                                <i class="fas fa-search"></i>
+                                Search Jobs
+                            </button>
+                        </div>
+                        <div class="search-history" id="searchHistory" style="display: none;">
+                            <div class="search-history-header">
+                                <span>Recent Searches</span>
+                                <button onclick="window.jobLinkHomepage.clearSearchHistory()">Clear</button>
+                            </div>
+                            <div class="search-history-items" id="searchHistoryItems"></div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="hero-stats">
+                        <div class="stats-refresh">
+                            <button onclick="window.refreshStats()" class="btn-refresh" title="Refresh Statistics" aria-label="Refresh statistics">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-jobs">15,000+</span>
+                            <span class="stat-label">Jobs Available</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-companies">5,000+</span>
+                            <span class="stat-label">Companies</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-seekers">50,000+</span>
+                            <span class="stat-label">Job Seekers</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Job Categories -->
+        <section class="categories">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Popular Job Categories</h2>
+                    <p>Explore opportunities in various fields</p>
+                </div>
+                <div class="categories-grid" id="categoriesGrid">
+                    <!-- Categories will be loaded dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <h2>How JobLink Works</h2>
+                    <p>Get started in three simple steps</p>
+                </div>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-number">01</div>
+                        <div class="step-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h3>Create Profile</h3>
+                        <p>Sign up and create your professional profile with skills and experience</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">02</div>
+                        <div class="step-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3>Find Jobs</h3>
+                        <p>Browse thousands of job opportunities that match your qualifications</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">03</div>
+                        <div class="step-icon">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <h3>Apply Now</h3>
+                        <p>Submit your application and connect with potential employers</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Jobs -->
+        <section class="featured-jobs">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Featured Jobs</h2>
+                    <p>Latest opportunities from top companies</p>
+                </div>
+                <div class="jobs-grid" id="jobsGrid">
+                    <!-- Jobs will be loaded dynamically from Firebase -->
+                </div>
+                <div class="section-footer">
+                    <a href="jobs.html" class="btn-view-all">View All Jobs <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action -->
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-content">
+                    <h2>Ready to Take the Next Step in Your Career?</h2>
+                    <p>Join thousands of professionals who found their dream jobs through JobLink</p>
+                    <div class="cta-buttons">
+                        <a href="register.html" class="btn btn-primary">Start Your Journey</a>
+                        <a href="about.html" class="btn btn-secondary">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Job Details Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalJobTitle">Job Title</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalJobDetails">
+                <!-- Job details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.jobLinkHomepage.closeJobModal()">Close</button>
+                <button class="btn btn-primary" id="modalApplyBtn" onclick="window.jobLinkHomepage.handleJobApplication()">Apply Now</button>
+            </div>
         </div>
-        <div class="container">
-            <div class="hero-content">
-                <h1 class="hero-title">Find Your Dream Career Today</h1>
-                <p class="hero-subtitle">Connect with top employers and discover opportunities that match your skills and aspirations</p>
-                
-                <!-- Search Box -->
-                <div class="search-container">
-                    <div class="search-box">
-                        <div class="search-input">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="jobSearchInput" placeholder="Job title, keywords, or company">
-                            <div class="search-suggestions"></div>
-                        </div>
-                        <div class="search-input">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <input type="text" id="locationSearchInput" placeholder="City or region">
-                        </div>
-                        <button class="search-btn" id="searchButton">
-                            <i class="fas fa-search"></i>
-                            Search Jobs
+    </div>
+
+    <!-- Auth Prompt Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2>Join JobLink to Apply</h2>
+                <button class="modal-close" onclick="window.jobLinkHomepage.closeAuthModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-prompt">
+                    <i class="fas fa-lock"></i>
+                    <h3>Authentication Required</h3>
+                    <p>You need to have an account to apply for this position. Please sign in or create a new account.</p>
+                    <div class="auth-buttons">
+                        <button class="btn btn-primary" onclick="window.jobLinkHomepage.redirectToLogin()">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Login
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.jobLinkHomepage.redirectToRegister()">
+                            <i class="fas fa-user-plus"></i>
+                            Sign Up
                         </button>
                     </div>
-                </div>
-
-                <!-- Quick Stats -->
-                <div class="hero-stats">
-                    <div class="stats-refresh">
-                        <button onclick="window.refreshStats()" class="btn-refresh" title="Refresh Statistics">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="stat-jobs">15,000+</span>
-                        <span class="stat-label">Jobs Available</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="stat-companies">5,000+</span>
-                        <span class="stat-label">Companies</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="stat-seekers">50,000+</span>
-                        <span class="stat-label">Job Seekers</span>
-                    </div>
+                    <p class="auth-note">Don't worry, your job application will be saved!</p>
                 </div>
             </div>
         </div>
-    </section>
-
-    <!-- Featured Job Categories -->
-    <section class="categories">
-        <div class="container">
-            <div class="section-header">
-                <h2>Popular Job Categories</h2>
-                <p>Explore opportunities in various fields</p>
-            </div>
-            <div class="categories-grid" id="categoriesGrid">
-                <!-- Categories will be loaded dynamically -->
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works -->
-    <section class="how-it-works">
-        <div class="container">
-            <div class="section-header">
-                <h2>How JobLink Works</h2>
-                <p>Get started in three simple steps</p>
-            </div>
-            <div class="steps-grid">
-                <div class="step-card">
-                    <div class="step-number">01</div>
-                    <div class="step-icon">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <h3>Create Profile</h3>
-                    <p>Sign up and create your professional profile with skills and experience</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">02</div>
-                    <div class="step-icon">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <h3>Find Jobs</h3>
-                    <p>Browse thousands of job opportunities that match your qualifications</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">03</div>
-                    <div class="step-icon">
-                        <i class="fas fa-paper-plane"></i>
-                    </div>
-                    <h3>Apply Now</h3>
-                    <p>Submit your application and connect with potential employers</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Featured Jobs -->
-    <section class="featured-jobs">
-        <div class="container">
-            <div class="section-header">
-                <h2>Featured Jobs</h2>
-                <p>Latest opportunities from top companies</p>
-            </div>
-            <div class="jobs-grid" id="jobsGrid">
-                <!-- Jobs will be loaded dynamically from Firebase -->
-            </div>
-            <div class="section-footer">
-                <a href="jobs.html" class="btn-view-all">View All Jobs <i class="fas fa-arrow-right"></i></a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Call to Action -->
-    <section class="cta-section">
-        <div class="container">
-            <div class="cta-content">
-                <h2>Ready to Take the Next Step in Your Career?</h2>
-                <p>Join thousands of professionals who found their dream jobs through JobLink</p>
-                <div class="cta-buttons">
-                    <a href="register.html" class="btn btn-primary">Start Your Journey</a>
-                    <a href="about.html" class="btn btn-secondary">Learn More</a>
-                </div>
-            </div>
-        </div>
-    </section>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">

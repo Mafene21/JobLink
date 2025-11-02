@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Jobs - JobLink</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="jobs.css">
+</head>
+<body>
+    <!-- Top Header Bar -->
+    <div class="top-header">
+        <div class="container">
+            <div class="header-left">
+                <span><i class="fas fa-phone"></i> +256 772 123 456</span>
+                <span><i class="fas fa-envelope"></i> info@joblink.com</span>
+            </div>
+            <div class="header-right">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-handshake"></i>
+                <span class="brand-text">JobLink</span>
+                <span class="brand-tagline">Connecting Talent with Opportunity</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="jobs.html" class="active">Find Jobs</a></li>
+                <li><a href="employers.html">For Employers</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li class="nav-auth">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="register.html" class="btn-register">Register</a>
+                </li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Page Header -->
+        <section class="page-header">
+            <div class="container">
+                <div class="page-header-content">
+                    <h1>Find Your Dream Job</h1>
+                    <p>Browse through thousands of job opportunities from top companies</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Jobs Search and Filters -->
+        <section class="jobs-section">
+            <div class="container">
+                <div class="jobs-layout">
+                    <!-- Simple Filters Sidebar -->
+                    <aside class="filters-sidebar">
+                        <div class="filters-header">
+                            <h3>Filters</h3>
+                            <button class="btn-clear-filters" id="clearFilters">
+                                Clear All
+                            </button>
+                        </div>
+
+                        <!-- Job Type Filter -->
+                        <div class="filter-group">
+                            <h4>Job Type</h4>
+                            <div class="filter-options">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="jobType" value="full-time" checked>
+                                    <span class="checkmark"></span>
+                                    Full Time
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="jobType" value="part-time" checked>
+                                    <span class="checkmark"></span>
+                                    Part Time
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="jobType" value="contract" checked>
+                                    <span class="checkmark"></span>
+                                    Contract
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="jobType" value="internship" checked>
+                                    <span class="checkmark"></span>
+                                    Internship
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="jobType" value="remote" checked>
+                                    <span class="checkmark"></span>
+                                    Remote
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Location Filter -->
+                        <div class="filter-group">
+                            <h4>Location</h4>
+                            <div class="filter-options">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="location" value="Kampala" checked>
+                                    <span class="checkmark"></span>
+                                    Kampala
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="location" value="Entebbe" checked>
+                                    <span class="checkmark"></span>
+                                    Entebbe
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="location" value="Jinja" checked>
+                                    <span class="checkmark"></span>
+                                    Jinja
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="location" value="Mbarara" checked>
+                                    <span class="checkmark"></span>
+                                    Mbarara
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="location" value="Remote" checked>
+                                    <span class="checkmark"></span>
+                                    Remote
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Simple Salary Filter -->
+                        <div class="filter-group">
+                            <h4>Salary</h4>
+                            <div class="salary-filter">
+                                <select id="salaryRange">
+                                    <option value="any">Any Salary</option>
+                                    <option value="0-1000">$0 - $1,000</option>
+                                    <option value="1000-3000">$1,000 - $3,000</option>
+                                    <option value="3000-5000">$3,000 - $5,000</option>
+                                    <option value="5000+">$5,000+</option>
+                                </select>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Jobs List -->
+                    <div class="jobs-main">
+                        <!-- Search Bar -->
+                        <div class="jobs-search-container">
+                            <div class="search-box">
+                                <div class="search-input">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="jobsSearchInput" placeholder="Job title, keywords, or company">
+                                </div>
+                                <button class="search-btn" id="jobsSearchButton">
+                                    <i class="fas fa-search"></i>
+                                    Search
+                                </button>
+                            </div>
+                            <div class="search-meta">
+                                <span id="jobsCount">Loading jobs...</span>
+                                <div class="sort-options">
+                                    <label for="sortSelect">Sort by:</label>
+                                    <select id="sortSelect">
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="salary-high">Salary: High to Low</option>
+                                        <option value="salary-low">Salary: Low to High</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jobs Grid -->
+                        <div class="jobs-grid" id="jobsGrid">
+                            <!-- Jobs will be loaded dynamically -->
+                        </div>
+
+                        <!-- Load More Button -->
+                        <div class="load-more-container">
+                            <button class="btn-load-more" id="loadMoreBtn">
+                                <i class="fas fa-spinner fa-spin" style="display: none;"></i>
+                                <span>Load More Jobs</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Job Details Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalJobTitle">Job Title</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalJobDetails">
+                <!-- Job details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.jobsPage.closeJobModal()">Close</button>
+                <button class="btn btn-primary" id="modalApplyBtn" onclick="window.jobsPage.handleJobApplication()">Apply Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Prompt Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2>Join JobLink to Apply</h2>
+                <button class="modal-close" onclick="window.jobsPage.closeAuthModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-prompt">
+                    <i class="fas fa-lock"></i>
+                    <h3>Authentication Required</h3>
+                    <p>You need to have an account to apply for this position. Please sign in or create a new account.</p>
+                    <div class="auth-buttons">
+                        <button class="btn btn-primary" onclick="window.jobsPage.redirectToLogin()">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Login
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.jobsPage.redirectToRegister()">
+                            <i class="fas fa-user-plus"></i>
+                            Sign Up
+                        </button>
+                    </div>
+                    <p class="auth-note">Don't worry, your job application will be saved!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <i class="fas fa-handshake"></i>
+                        <span class="brand-text">JobLink</span>
+                    </div>
+                    <p class="footer-description">
+                        Connecting talented professionals with leading employers across Uganda and beyond.
+                    </p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="jobs.html">Find Jobs</a></li>
+                        <li><a href="employers.html">For Employers</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Job Seeker</h3>
+                    <ul class="footer-links">
+                        <li><a href="register.html">Create Account</a></li>
+                        <li><a href="jobs.html">Browse Jobs</a></li>
+                        <li><a href="#">Career Advice</a></li>
+                        <li><a href="#">Success Stories</a></li>
+                        <li><a href="#">Help Center</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Employer</h3>
+                    <ul class="footer-links">
+                        <li><a href="employer_register.html">Post Jobs</a></li>
+                        <li><a href="#">Browse Candidates</a></li>
+                        <li><a href="#">Pricing Plans</a></li>
+                        <li><a href="#">Employer Guide</a></li>
+                        <li><a href="#">Success Stories</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Contact Info</h3>
+                    <div class="contact-info">
+                        <p><i class="fas fa-map-marker-alt"></i> 123 Main Street, Kampala, Uganda</p>
+                        <p><i class="fas fa-phone"></i> +256 772 123 456</p>
+                        <p><i class="fas fa-envelope"></i> info@joblink.com</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p>&copy; 2024 JobLink. All rights reserved.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="jobs.js"></script>
+</body>
+</html>

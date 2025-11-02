@@ -40,6 +40,36 @@ body {
     padding: 0 15px;
 }
 
+/* Accessibility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--primary);
+    color: white;
+    padding: 8px 12px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 10000;
+    font-weight: 600;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
 /* Top Header - Mobile First */
 .top-header {
     background: var(--primary);
@@ -121,7 +151,7 @@ body {
     display: none;
 }
 
-/* Mobile Navigation Menu - FIXED */
+/* Mobile Navigation Menu */
 .nav-menu {
     display: none;
     position: absolute;
@@ -186,6 +216,7 @@ body {
     text-align: center;
     display: block;
     text-decoration: none;
+    font-weight: 600;
 }
 
 .btn-login:hover {
@@ -202,13 +233,14 @@ body {
     text-align: center;
     display: block;
     text-decoration: none;
+    font-weight: 600;
 }
 
 .btn-register:hover {
     background: var(--primary-dark);
 }
 
-/* Hamburger Menu - FIXED */
+/* Hamburger Menu */
 .hamburger {
     display: flex;
     flex-direction: column;
@@ -297,6 +329,7 @@ body {
     box-shadow: var(--shadow-lg);
     margin-bottom: 30px;
     margin: 0 10px 30px;
+    position: relative;
 }
 
 .search-box {
@@ -331,6 +364,84 @@ body {
 .search-input input:focus {
     outline: none;
     border-color: var(--primary);
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.search-suggestions.active {
+    display: block;
+}
+
+.search-suggestions div {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+
+.search-suggestions div:hover {
+    background: var(--light);
+    color: var(--primary);
+}
+
+.search-suggestions div:last-child {
+    border-bottom: none;
+}
+
+.search-history {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--light-gray);
+}
+
+.search-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: var(--gray);
+}
+
+.search-history-header button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.search-history-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.search-history-item {
+    background: var(--light);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.search-history-item:hover {
+    background: var(--primary);
+    color: var(--white);
 }
 
 .search-btn {
@@ -580,12 +691,21 @@ body {
     box-shadow: var(--shadow);
     transition: var(--transition);
     border: 2px solid transparent;
+    position: relative;
 }
 
 .job-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
     border-color: var(--primary);
+}
+
+.job-card.featured {
+    border-left: 4px solid var(--secondary);
+}
+
+.job-card.urgent {
+    border-left: 4px solid var(--accent);
 }
 
 .job-header {
@@ -729,6 +849,36 @@ body {
     transform: translateY(-2px);
 }
 
+/* Loading and Error States */
+.loading-state, .no-jobs {
+    text-align: center;
+    padding: 40px 20px;
+    grid-column: 1 / -1;
+}
+
+.loading-state i {
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: 15px;
+}
+
+.no-jobs i {
+    font-size: 3rem;
+    color: var(--gray);
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.no-jobs h3 {
+    color: var(--dark);
+    margin-bottom: 10px;
+}
+
+.no-jobs p {
+    color: var(--gray);
+    margin-bottom: 20px;
+}
+
 .section-footer {
     text-align: center;
 }
@@ -818,6 +968,175 @@ body {
 .btn-secondary:hover {
     background: var(--white);
     color: var(--primary);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--light-gray);
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 1;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+    color: var(--dark);
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray);
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    background: var(--light-gray);
+    color: var(--dark);
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid var(--light-gray);
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    position: sticky;
+    bottom: 0;
+    background: var(--white);
+    border-radius: 0 0 12px 12px;
+}
+
+/* Job Details in Modal */
+.job-detail-item {
+    margin-bottom: 20px;
+}
+
+.job-detail-item h3 {
+    color: var(--primary);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.job-detail-item p {
+    color: var(--dark);
+    line-height: 1.6;
+}
+
+.job-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--light);
+    border-radius: 8px;
+}
+
+.meta-item i {
+    color: var(--primary);
+    width: 20px;
+}
+
+.meta-item span {
+    color: var(--dark);
+    font-weight: 500;
+}
+
+/* Auth Modal */
+.auth-modal .modal-content {
+    max-width: 450px;
+}
+
+.auth-prompt {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.auth-prompt i {
+    font-size: 3rem;
+    color: var(--primary);
+    margin-bottom: 20px;
+}
+
+.auth-prompt h3 {
+    color: var(--dark);
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.auth-prompt p {
+    color: var(--gray);
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.auth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.auth-note {
+    font-size: 0.9rem;
+    color: var(--gray);
+    font-style: italic;
 }
 
 /* Footer */
@@ -1025,6 +1344,15 @@ body {
         justify-content: space-between;
         text-align: left;
     }
+    
+    .job-meta {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .auth-buttons {
+        flex-direction: row;
+        justify-content: center;
+    }
 }
 
 /* Large Screens (Desktops) */
@@ -1134,6 +1462,10 @@ body {
         grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
         gap: 40px;
     }
+    
+    .job-meta {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 /* Small Mobile Screens */
@@ -1164,6 +1496,14 @@ body {
     .job-card {
         padding: 20px 15px;
     }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
 }
 
 /* Focus styles for accessibility */
@@ -1188,7 +1528,7 @@ input[type="submit"] {
     min-width: 44px;
 }
 
-/* Animation for stats */
+/* Animations */
 @keyframes countUp {
     from {
         opacity: 0;
@@ -1197,6 +1537,17 @@ input[type="submit"] {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
