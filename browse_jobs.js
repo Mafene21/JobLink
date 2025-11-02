@@ -34,6 +34,62 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Simple Mobile Menu Functionality
+function initMobileMenu() {
+  const hamburger = document.getElementById('hamburgerMenu');
+  const navLinks = document.getElementById('navLinks');
+
+  console.log('Mobile menu elements:', { hamburger, navLinks });
+
+  if (hamburger && navLinks) {
+    hamburger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      console.log('Hamburger clicked!');
+      navLinks.classList.toggle('active');
+      hamburger.classList.toggle('active');
+      
+      // Toggle body scroll
+      if (navLinks.classList.contains('active')) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Close menu when clicking on links
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function() {
+        console.log('Nav link clicked');
+        navLinks.classList.remove('active');
+        hamburger.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+        navLinks.classList.remove('active');
+        hamburger.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Close menu on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        navLinks.classList.remove('active');
+        hamburger.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    });
+
+    console.log('Mobile menu initialized successfully');
+  } else {
+    console.error('Mobile menu elements not found!');
+  }
+}
+
 class AppliedJobs {
     constructor() {
         this.currentUser = null;
@@ -54,64 +110,11 @@ class AppliedJobs {
     }
 
     async init() {
+        // Initialize mobile menu first
+        initMobileMenu();
+        
         await this.checkAuthState();
-        this.initMobileMenu();
         this.bindEvents();
-    }
-
-    initMobileMenu() {
-        const hamburger = document.getElementById('hamburgerMenu');
-        const navLinks = document.getElementById('navLinks');
-
-        console.log('Initializing mobile menu...');
-        console.log('Hamburger:', hamburger);
-        console.log('Nav links:', navLinks);
-
-        if (hamburger && navLinks) {
-            hamburger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                console.log('Hamburger clicked');
-                navLinks.classList.toggle('active');
-                hamburger.classList.toggle('active');
-                
-                // Prevent body scroll when menu is open
-                if (navLinks.classList.contains('active')) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
-            });
-
-            // Close menu when clicking on a link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    console.log('Nav link clicked');
-                    navLinks.classList.remove('active');
-                    hamburger.classList.remove('active');
-                    document.body.style.overflow = '';
-                });
-            });
-
-            // Close menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
-                    navLinks.classList.remove('active');
-                    hamburger.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
-            });
-
-            // Close menu on escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    navLinks.classList.remove('active');
-                    hamburger.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
-            });
-        } else {
-            console.error('Mobile menu elements not found');
-        }
     }
 
     async checkAuthState() {
@@ -147,7 +150,6 @@ class AppliedJobs {
         const userAvatarNav = document.getElementById('userAvatarNav');
         if (this.userData?.profilePicture) {
             userAvatarNav.src = this.userData.profilePicture;
-            console.log('Profile picture updated');
         } else {
             userAvatarNav.src = 'https://via.placeholder.com/32x32?text=U';
         }
@@ -164,8 +166,6 @@ class AppliedJobs {
                 </div>
             `;
 
-            console.log('=== LOADING APPLICATIONS FOR USER:', this.currentUser.uid, '===');
-            
             this.applications = [];
             
             // Try multiple methods to find applications
@@ -178,9 +178,6 @@ class AppliedJobs {
             if (this.applications.length === 0) {
                 await this.tryAllCollections();
             }
-            
-            console.log('Final applications found:', this.applications.length);
-            console.log('Applications data:', this.applications);
             
             if (this.applications.length === 0) {
                 this.showNoApplicationsState();
@@ -198,19 +195,15 @@ class AppliedJobs {
     }
 
     async tryApplicationsCollection() {
-        console.log('=== METHOD 1: Checking applications collection ===');
         try {
             const applicationsQuery = query(
                 collection(db, 'applications'),
                 where('seekerId', '==', this.currentUser.uid)
             );
             const snapshot = await getDocs(applicationsQuery);
-            console.log('Found', snapshot.size, 'documents in applications collection');
             
             for (const doc of snapshot.docs) {
                 const appData = doc.data();
-                console.log('Application document:', appData);
-                
                 const application = await this.createApplicationFromData(doc.id, appData);
                 if (application) {
                     this.applications.push(application);
@@ -222,19 +215,15 @@ class AppliedJobs {
     }
 
     async tryJobsCollection() {
-        console.log('=== METHOD 2: Checking jobs collection for applicants ===');
         try {
             const jobsQuery = query(
                 collection(db, 'jobs'),
                 where('applicants', 'array-contains', this.currentUser.uid)
             );
             const snapshot = await getDocs(jobsQuery);
-            console.log('Found', snapshot.size, 'jobs where user is an applicant');
             
             for (const doc of snapshot.docs) {
                 const jobData = doc.data();
-                console.log('Job with applicant:', jobData);
-                
                 const application = await this.createApplicationFromJob(doc.id, jobData);
                 if (application) {
                     this.applications.push(application);
@@ -246,21 +235,16 @@ class AppliedJobs {
     }
 
     async tryAllCollections() {
-        console.log('=== METHOD 3: Checking all documents across collections ===');
-        
         // Check applications collection (all documents)
         try {
             const applicationsSnapshot = await getDocs(collection(db, 'applications'));
-            console.log('Total applications in database:', applicationsSnapshot.size);
             
             for (const doc of applicationsSnapshot.docs) {
                 const appData = doc.data();
-                // Check if this application belongs to current user by any field
                 if (appData.seekerId === this.currentUser.uid || 
                     appData.userId === this.currentUser.uid ||
                     appData.applicantId === this.currentUser.uid) {
                     
-                    console.log('Found application for user:', appData);
                     const application = await this.createApplicationFromData(doc.id, appData);
                     if (application) {
                         this.applications.push(application);
@@ -274,15 +258,12 @@ class AppliedJobs {
         // Check jobs collection (all documents)
         try {
             const jobsSnapshot = await getDocs(collection(db, 'jobs'));
-            console.log('Total jobs in database:', jobsSnapshot.size);
             
             for (const doc of jobsSnapshot.docs) {
                 const jobData = doc.data();
-                // Check if user is in applicants array or similar field
                 if (jobData.applicants && Array.isArray(jobData.applicants) && 
                     jobData.applicants.includes(this.currentUser.uid)) {
                     
-                    console.log('Found job application for user:', jobData);
                     const application = await this.createApplicationFromJob(doc.id, jobData);
                     if (application) {
                         this.applications.push(application);
@@ -295,8 +276,6 @@ class AppliedJobs {
     }
 
     async createApplicationFromData(appId, appData) {
-        console.log('Creating application from data:', appData);
-        
         const application = {
             id: appId,
             ...appData,
@@ -309,11 +288,9 @@ class AppliedJobs {
             resumeFileName: appData.resumeFileName || null
         };
 
-        // If we have a jobId, load the job data
         if (application.jobId) {
             await this.enrichApplicationWithJobData(application);
         } else {
-            // Create basic job info from application data
             application.job = {
                 title: application.jobTitle || 'Unknown Position',
                 company: application.companyName || 'Unknown Company',
@@ -330,13 +307,10 @@ class AppliedJobs {
             };
         }
 
-        console.log('Final application:', application);
         return application;
     }
 
     async createApplicationFromJob(jobId, jobData) {
-        console.log('Creating application from job:', jobData);
-        
         const application = {
             id: jobId,
             jobId: jobId,
@@ -360,7 +334,6 @@ class AppliedJobs {
             resumeFileName: null
         };
 
-        console.log('Final application from job:', application);
         return application;
     }
 
@@ -369,7 +342,6 @@ class AppliedJobs {
             const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
             if (jobDoc.exists()) {
                 const jobData = jobDoc.data();
-                console.log('Enriched with job data:', jobData);
                 
                 application.job = {
                     title: jobData.jobTitle || jobData.title || 'Unknown Position',
@@ -403,12 +375,10 @@ class AppliedJobs {
         
         for (const field of possibleLogoFields) {
             if (data[field]) {
-                console.log(`🎯 Found logo in field "${field}":`, data[field]);
                 return data[field];
             }
         }
         
-        console.log('❌ No logo found in data');
         return null;
     }
 
@@ -428,13 +398,6 @@ class AppliedJobs {
                         <i class="fas fa-refresh"></i>
                         Refresh
                     </button>
-                </div>
-                <div style="margin-top: 20px; padding: 15px; background: var(--light-gray); border-radius: 8px;">
-                    <h4>Debug Information</h4>
-                    <p><strong>User ID:</strong> ${this.currentUser?.uid}</p>
-                    <p><strong>Applications Found:</strong> 0</p>
-                    <p><strong>Note:</strong> If you have applied to jobs but don't see them here, 
-                    please check that your applications are stored in the database.</p>
                 </div>
             </div>
         `;
@@ -558,14 +521,8 @@ class AppliedJobs {
         const jobTitle = job.title || 'Unknown Position';
         const jobLocation = job.location || 'Remote';
 
-        console.log(`Rendering card for ${companyName} - Logo URL:`, logoUrl);
-
-        // Simple logo HTML - only use actual logo URLs
         const logoHTML = logoUrl ? 
-            `<img src="${logoUrl}" 
-                  alt="${companyName}" 
-                  class="company-logo"
-                  onerror="console.log('Logo failed to load for ${companyName}:', this.src); this.style.display='none'">` :
+            `<img src="${logoUrl}" alt="${companyName}" class="company-logo">` :
             `<div class="company-logo no-logo" title="${companyName}">
                 <i class="fas fa-building"></i>
              </div>`;
@@ -777,18 +734,6 @@ class AppliedJobs {
 
         content.innerHTML = this.createApplicationDetailsHTML(application);
         sidebar.classList.add('active');
-        
-        setTimeout(() => {
-            document.getElementById('viewTimelineFromSidebar')?.addEventListener('click', () => {
-                this.showTimelineModal(applicationId);
-            });
-            document.getElementById('contactEmployerFromSidebar')?.addEventListener('click', () => {
-                this.showContactModal(applicationId);
-            });
-            document.getElementById('withdrawFromSidebar')?.addEventListener('click', () => {
-                this.showWithdrawModal(applicationId);
-            });
-        }, 100);
     }
 
     createApplicationDetailsHTML(application) {
@@ -802,10 +747,7 @@ class AppliedJobs {
         const jobLocation = job.location || 'Location not specified';
 
         const logoHTML = logoUrl ? 
-            `<img src="${logoUrl}" 
-                  alt="${companyName}" 
-                  class="company-logo"
-                  onerror="console.log('Logo failed to load in sidebar for ${companyName}:', this.src); this.style.display='none'">` :
+            `<img src="${logoUrl}" alt="${companyName}" class="company-logo">` :
             `<div class="company-logo no-logo" title="${companyName}">
                 <i class="fas fa-building"></i>
              </div>`;
@@ -889,67 +831,6 @@ class AppliedJobs {
                     </div>
                 </div>
                 ` : ''}
-
-                <div class="application-timeline">
-                    <h4>Application Timeline</h4>
-                    <div class="timeline-item">
-                        <div class="timeline-date">${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'}</div>
-                        <div class="timeline-content">
-                            <strong>Application Submitted</strong>
-                            <p>You applied for the ${jobTitle} position at ${companyName}.</p>
-                        </div>
-                    </div>
-                    
-                    ${application.status === 'reviewed' || application.status === 'pending' ? `
-                    <div class="timeline-item">
-                        <div class="timeline-date">Currently</div>
-                        <div class="timeline-content">
-                            <strong>Under Review</strong>
-                            <p>Your application is being reviewed by the hiring team.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${application.status === 'shortlisted' ? `
-                    <div class="timeline-item success">
-                        <div class="timeline-date">Recently</div>
-                        <div class="timeline-content">
-                            <strong>Application Shortlisted</strong>
-                            <p>Great news! Your application has been shortlisted by the employer.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${application.status === 'interview' ? `
-                    <div class="timeline-item success">
-                        <div class="timeline-date">Recently</div>
-                        <div class="timeline-content">
-                            <strong>Interview Stage</strong>
-                            <p>Your application has progressed to the interview stage.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${application.status === 'accepted' ? `
-                    <div class="timeline-item success">
-                        <div class="timeline-date">Recently</div>
-                        <div class="timeline-content">
-                            <strong>Application Accepted</strong>
-                            <p>Congratulations! Your application has been accepted.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${application.status === 'rejected' ? `
-                    <div class="timeline-item rejected">
-                        <div class="timeline-date">Recently</div>
-                        <div class="timeline-content">
-                            <strong>Application Not Selected</strong>
-                            <p>Unfortunately, your application was not selected for this position.</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
 
                 <div class="action-buttons">
                     <button class="btn btn-primary" id="viewTimelineFromSidebar">
@@ -1049,21 +930,6 @@ class AppliedJobs {
                     </div>
                 </div>
                 ` : ''}
-
-                <div class="timeline-event">
-                    <div class="event-date">Next Steps</div>
-                    <div class="event-title">What to Expect</div>
-                    <div class="event-description">
-                        <strong>Typical Hiring Process:</strong><br>
-                        1. Application Review (3-7 days)<br>
-                        2. Shortlisting<br>
-                        3. Phone Screening (if applicable)<br>
-                        4. Interviews (1-3 rounds)<br>
-                        5. Assessment/Test (if required)<br>
-                        6. Job Offer<br><br>
-                        If you don't hear back within 2 weeks, consider following up with the employer.
-                    </div>
-                </div>
             </div>
         `;
     }
@@ -1100,12 +966,6 @@ class AppliedJobs {
         }
 
         try {
-            console.log('Sending message to employer:', {
-                applicationId,
-                message,
-                includeResume
-            });
-
             this.hideModal('contactModal');
             this.showToast('Message sent successfully to employer');
             
@@ -1244,14 +1104,6 @@ class AppliedJobs {
         document.getElementById('shortlistedApplicationsCount').textContent = shortlistedApplications;
         document.getElementById('interviewApplicationsCount').textContent = interviewApplications;
         document.getElementById('rejectedApplicationsCount').textContent = rejectedApplications;
-
-        console.log('Stats updated:', {
-            total: totalApplications,
-            pending: pendingApplications,
-            shortlisted: shortlistedApplications,
-            interview: interviewApplications,
-            rejected: rejectedApplications
-        });
     }
 
     bindEvents() {
@@ -1370,7 +1222,6 @@ class AppliedJobs {
 
     exportApplicationsData() {
         this.showToast('Applications data exported successfully');
-        console.log('Exporting applications data:', this.filteredApplications);
     }
 
     hideModal(modalId) {
