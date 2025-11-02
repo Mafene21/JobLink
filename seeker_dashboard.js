@@ -91,6 +91,9 @@ class SeekerDashboard {
     }
 
     bindEvents() {
+        // Mobile navigation
+        this.bindMobileNavigation();
+        
         // Search functionality
         const searchInput = document.getElementById('jobSearch');
         const jobFilter = document.getElementById('jobFilter');
@@ -154,6 +157,60 @@ class SeekerDashboard {
 
         // File upload events
         this.setupFileUpload();
+    }
+
+    bindMobileNavigation() {
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        
+        if (hamburger) {
+            hamburger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hamburger.classList.toggle('active');
+                navLinks.classList.toggle('active');
+                
+                // Add overlay when menu is open
+                if (navLinks.classList.contains('active')) {
+                    this.createMenuOverlay();
+                } else {
+                    this.removeMenuOverlay();
+                }
+            });
+            
+            // Close menu when clicking on navigation links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    hamburger.classList.remove('active');
+                    navLinks.classList.remove('active');
+                    this.removeMenuOverlay();
+                });
+            });
+        }
+    }
+
+    createMenuOverlay() {
+        // Remove existing overlay if any
+        this.removeMenuOverlay();
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'menu-overlay active';
+        document.body.appendChild(overlay);
+        
+        overlay.addEventListener('click', () => {
+            const hamburger = document.querySelector('.hamburger');
+            const navLinks = document.querySelector('.nav-links');
+            
+            hamburger.classList.remove('active');
+            navLinks.classList.remove('active');
+            this.removeMenuOverlay();
+        });
+    }
+
+    removeMenuOverlay() {
+        const overlay = document.querySelector('.menu-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
     }
 
     setupFileUpload() {
