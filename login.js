@@ -3,6 +3,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebas
 import { 
   getAuth, 
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence
@@ -10,7 +12,8 @@ import {
 import { 
   getFirestore, 
   doc, 
-  getDoc 
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
@@ -29,6 +32,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Configure Google Provider with custom parameters to prevent nonce issues
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+  login_hint: ''
+});
+
+// Add scopes
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+
 document.addEventListener('DOMContentLoaded', function() {
   const loginForm = document.getElementById('loginForm');
   const emailInput = document.getElementById('email');
@@ -41,6 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const formError = document.getElementById('formError');
   const successMessage = document.getElementById('successMessage');
   const rememberMe = document.getElementById('rememberMe');
+  const googleLoginBtn = document.querySelector('.btn-google');
+  const linkedinLoginBtn = document.querySelector('.btn-linkedin');
+
+  // Track Google login attempts to prevent duplicates
+  let googleLoginInProgress = false;
 
   // Mobile navigation toggle
   const hamburger = document.querySelector('.hamburger');
@@ -96,6 +115,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (validateForm()) {
       loginUser();
     }
+  });
+
+  // Google Login with protection against duplicate clicks
+  googleLoginBtn.addEventListener('click', function() {
+    if (!googleLoginInProgress) {
+      loginWithGoogle();
+    }
+  });
+
+  // LinkedIn Login (placeholder)
+  linkedinLoginBtn.addEventListener('click', function() {
+    showFormError('LinkedIn login will be available soon.');
   });
 
   // Validation functions
@@ -174,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loginForm.insertBefore(messageDiv, loginForm.firstChild);
   }
 
-  // Firebase user login
+  // Firebase user login with email/password
   async function loginUser() {
     // Show loading state
     loginButton.classList.add('loading');
@@ -248,6 +279,160 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Google Login function with enhanced error handling
+  async function loginWithGoogle() {
+    if (googleLoginInProgress) {
+      return; // Prevent multiple simultaneous logins
+    }
+
+    googleLoginInProgress = true;
+    
+    try {
+      // Show loading state on Google button
+      googleLoginBtn.disabled = true;
+      const originalContent = googleLoginBtn.innerHTML;
+      googleLoginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+      
+      // Clear any existing errors
+      clearFormError();
+      
+      console.log('Starting Google Sign-In...');
+      
+      // Add a small delay to ensure everything is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Sign in with Google
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      console.log('Google login successful for:', user.email);
+      
+      await handleSuccessfulGoogleLogin(user);
+      
+    } catch (error) {
+      await handleGoogleLoginError(error);
+    } finally {
+      googleLoginInProgress = false;
+    }
+  }
+
+  async function handleSuccessfulGoogleLogin(user) {
+    try {
+      // Check if user document exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const userType = userData.userType;
+        
+        showSuccess('Google login successful! Redirecting to your dashboard...');
+        
+        // Redirect based on user type
+        setTimeout(() => {
+          if (userType === 'employer') {
+            window.location.href = 'employer_dashboard.html';
+          } else {
+            window.location.href = 'seeker_dashboard.html';
+          }
+        }, 1500);
+      } else {
+        // User signed in with Google but no Firestore document - create one
+        await createUserDocumentFromGoogle(user);
+      }
+      
+    } catch (dbError) {
+      console.error('Firestore error:', dbError);
+      showFormError('Error accessing user data. Please try again.');
+      resetGoogleButton();
+    }
+  }
+
+  async function createUserDocumentFromGoogle(user) {
+    try {
+      showFormError('Setting up your account for the first time...');
+      
+      // Create a basic user document with default as job seeker
+      await setDoc(doc(db, 'users', user.uid), {
+        fullName: user.displayName || 'Google User',
+        email: user.email,
+        userType: 'seeker', // Default to job seeker
+        createdAt: new Date(),
+        profileCompleted: false,
+        photoURL: user.photoURL,
+        isGoogleUser: true,
+        lastLogin: new Date()
+      });
+      
+      showSuccess('Account setup complete! Redirecting to your dashboard...');
+      
+      // Redirect to seeker dashboard (default)
+      setTimeout(() => {
+        window.location.href = 'seeker_dashboard.html';
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error creating user document:', error);
+      showFormError('Error setting up account. Please contact support.');
+      resetGoogleButton();
+    }
+  }
+
+  async function handleGoogleLoginError(error) {
+    console.error('Google login error details:', error);
+    
+    const errorCode = error.code;
+    let errorMessage = 'Login failed. Please try again.';
+    let shouldResetButton = true;
+    
+    switch (errorCode) {
+      case 'auth/popup-closed-by-user':
+        errorMessage = 'Google login was cancelled.';
+        break;
+      case 'auth/popup-blocked':
+        errorMessage = 'Popup was blocked. Please allow popups for this site or try email login.';
+        break;
+      case 'auth/network-request-failed':
+        errorMessage = 'Network error. Please check your internet connection.';
+        break;
+      case 'auth/unauthorized-domain':
+        errorMessage = 'This domain is not authorized for Google Sign-In. Please contact support.';
+        break;
+      case 'auth/missing-or-invalid-nonce':
+        errorMessage = 'Security token issue. Please refresh the page and try again.';
+        // Force page refresh after delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+        shouldResetButton = false;
+        break;
+      case 'auth/cancelled-popup-request':
+        errorMessage = 'Login process was cancelled. Please try again.';
+        break;
+      case 'auth/account-exists-with-different-credential':
+        errorMessage = 'An account already exists with this email. Please use email login.';
+        break;
+      default:
+        if (error.message.includes('nonce')) {
+          errorMessage = 'Security error. Refreshing page...';
+          setTimeout(() => window.location.reload(), 2000);
+          shouldResetButton = false;
+        } else {
+          errorMessage = `Login error: ${error.message}`;
+        }
+    }
+    
+    showFormError(errorMessage);
+    
+    if (shouldResetButton) {
+      resetGoogleButton();
+    }
+  }
+
+  function resetGoogleButton() {
+    googleLoginBtn.disabled = false;
+    googleLoginBtn.innerHTML = '<i class="fab fa-google"></i> Google';
+  }
+
   function showSuccess(message) {
     successMessage.textContent = message;
     successMessage.style.display = 'block';
@@ -258,15 +443,6 @@ document.addEventListener('DOMContentLoaded', function() {
       noAccountMessage.remove();
     }
   }
-
-  // Social login buttons
-  document.querySelector('.btn-google').addEventListener('click', function() {
-    showFormError('Google login will be available soon.');
-  });
-
-  document.querySelector('.btn-linkedin').addEventListener('click', function() {
-    showFormError('LinkedIn login will be available soon.');
-  });
 
   // Auto-fill for testing
   const urlParams = new URLSearchParams(window.location.search);
@@ -280,4 +456,9 @@ document.addEventListener('DOMContentLoaded', function() {
     emailInput.value = 'demo@jobmatch.com';
     passwordInput.value = 'password123';
   }
+
+  // Add a cleanup function when page unloads
+  window.addEventListener('beforeunload', function() {
+    googleLoginInProgress = false;
+  });
 });

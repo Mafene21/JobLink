@@ -4,13 +4,12 @@ import {
     getFirestore, 
     collection, 
     getDocs,
-    getDoc,
-    doc,
     query,
     where,
     orderBy,
     limit 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -26,6 +25,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 class JobLinkHomepage {
     constructor() {
@@ -39,7 +39,6 @@ class JobLinkHomepage {
         this.loadCategories();
         this.loadRealStats();
         this.animateOnScroll();
-        this.initSearchHistory();
     }
 
     // Fixed Mobile Navigation
@@ -114,12 +113,12 @@ class JobLinkHomepage {
         });
     }
 
-    // Enhanced Search with Suggestions and History
+    // Enhanced Search with Suggestions
     initAdvancedSearch() {
         const searchBtn = document.getElementById('searchButton');
         const jobInput = document.getElementById('jobSearchInput');
         const locationInput = document.getElementById('locationSearchInput');
-        const suggestions = document.getElementById('searchSuggestions');
+        const suggestions = document.querySelector('.search-suggestions');
         
         const categories = ['Technology', 'Healthcare', 'Business', 'Education', 'Engineering', 'Creative', 
                            'Marketing', 'Sales', 'Customer Service', 'Finance', 'Design', 'Operations'];
@@ -142,10 +141,10 @@ class JobLinkHomepage {
             }
         });
         
-        // Job input suggestions with debouncing
+        // Job input suggestions
         if (jobInput && suggestions) {
-            jobInput.addEventListener('input', this.debounce((e) => {
-                const value = e.target.value.toLowerCase().trim();
+            jobInput.addEventListener('input', (e) => {
+                const value = e.target.value.toLowerCase();
                 suggestions.innerHTML = '';
                 
                 if (value.length > 1) {
@@ -154,89 +153,33 @@ class JobLinkHomepage {
                     );
                     
                     if (filtered.length > 0) {
-                        suggestions.classList.add('active');
                         filtered.forEach(cat => {
                             const div = document.createElement('div');
                             div.textContent = cat;
                             div.addEventListener('click', () => {
                                 jobInput.value = cat;
-                                suggestions.classList.remove('active');
+                                suggestions.innerHTML = '';
                                 this.performSearch();
                             });
                             suggestions.appendChild(div);
                         });
                     } else {
-                        suggestions.classList.add('active');
                         const div = document.createElement('div');
                         div.textContent = 'No suggestions found';
                         div.style.color = 'var(--gray)';
                         div.style.cursor = 'default';
                         suggestions.appendChild(div);
                     }
-                } else {
-                    suggestions.classList.remove('active');
                 }
-            }, 300));
+            });
         }
         
         // Close suggestions when clicking outside
         document.addEventListener('click', (e) => {
             if (suggestions && !e.target.closest('.search-input')) {
-                suggestions.classList.remove('active');
+                suggestions.innerHTML = '';
             }
         });
-    }
-
-    // Initialize search history
-    initSearchHistory() {
-        const searchHistory = document.getElementById('searchHistory');
-        const searchHistoryItems = document.getElementById('searchHistoryItems');
-        
-        if (!searchHistory || !searchHistoryItems) return;
-        
-        const searches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-        
-        if (searches.length > 0) {
-            searchHistory.style.display = 'block';
-            searchHistoryItems.innerHTML = '';
-            
-            searches.forEach(search => {
-                const item = document.createElement('div');
-                item.className = 'search-history-item';
-                item.textContent = `${search.query}${search.location ? ` in ${search.location}` : ''}`;
-                item.addEventListener('click', () => {
-                    const jobInput = document.getElementById('jobSearchInput');
-                    const locationInput = document.getElementById('locationSearchInput');
-                    
-                    if (jobInput) jobInput.value = search.query;
-                    if (locationInput) locationInput.value = search.location || '';
-                    this.performSearch();
-                });
-                searchHistoryItems.appendChild(item);
-            });
-        }
-    }
-
-    // Clear search history
-    clearSearchHistory() {
-        localStorage.removeItem('recentSearches');
-        const searchHistory = document.getElementById('searchHistory');
-        if (searchHistory) {
-            searchHistory.style.display = 'none';
-        }
-    }
-
-    // Debounce function for performance
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
     }
 
     performSearch() {
@@ -247,11 +190,6 @@ class JobLinkHomepage {
         
         const jobQuery = jobInput.value.trim();
         const locationQuery = locationInput.value.trim();
-        
-        // Save to search history
-        if (jobQuery) {
-            this.saveSearch(jobQuery, locationQuery);
-        }
         
         const params = new URLSearchParams();
         if (jobQuery) params.set('q', jobQuery);
@@ -265,19 +203,6 @@ class JobLinkHomepage {
         }));
         
         window.location.href = `jobs.html?${params.toString()}`;
-    }
-
-    saveSearch(query, location) {
-        const searches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-        const newSearch = { query, location, timestamp: Date.now() };
-        
-        // Remove duplicates and keep only last 5 searches
-        const updatedSearches = [newSearch, ...searches.filter(s => 
-            s.query !== query || s.location !== location
-        )].slice(0, 5);
-        
-        localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-        this.initSearchHistory(); // Refresh display
     }
 
     // Generate SVG placeholder for company logos
@@ -642,6 +567,7 @@ class JobLinkHomepage {
                 jobData = demoJobs[jobId] || demoJobs['demo-1'];
             } else {
                 // Get real job from Firebase
+                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
                 const jobDoc = await getDoc(doc(db, 'jobs', jobId));
                 if (!jobDoc.exists()) {
                     throw new Error('Job not found');
@@ -675,7 +601,7 @@ class JobLinkHomepage {
             ? jobData.requirements.map(req => `<li>${req}</li>`).join('')
             : '<li>No specific requirements listed</li>';
             
-        const responsibilitiesHTML = Array.isArray(jobData.responsibilities) // FIXED: Changed from responsponsibilitiesHTML to responsibilitiesHTML
+        const responsibilitiesHTML = Array.isArray(jobData.responsibilities)
             ? jobData.responsibilities.map(resp => `<li>${resp}</li>`).join('')
             : '<li>No specific responsibilities listed</li>';
         
@@ -714,7 +640,7 @@ class JobLinkHomepage {
             <div class="job-detail-item">
                 <h3>Responsibilities</h3>
                 <ul>
-                    ${responsibilitiesHTML} <!-- FIXED: Changed from responsponsibilitiesHTML to responsibilitiesHTML -->
+                    ${responsibilitiesHTML}
                 </ul>
             </div>
             
@@ -729,8 +655,8 @@ class JobLinkHomepage {
 
     // Handle job application
     handleJobApplication() {
-        // Check if user is logged in (you would implement proper auth check)
-        const isLoggedIn = this.checkUserAuth(); // Implement this based on your auth system
+        // Check if user is logged in
+        const isLoggedIn = this.checkUserAuth();
         
         if (!isLoggedIn) {
             this.closeJobModal();
@@ -741,11 +667,9 @@ class JobLinkHomepage {
         }
     }
 
-    // Check user authentication (placeholder - implement based on your auth system)
+    // Check user authentication
     checkUserAuth() {
-        // This should check your actual authentication state
-        // For now, return false to demonstrate the auth flow
-        return false;
+        return auth.currentUser !== null;
     }
 
     // Show authentication modal
@@ -782,22 +706,17 @@ class JobLinkHomepage {
         }
     }
 
-    // Redirect to login
-    redirectToLogin() {
+    // Redirect to auth page
+    redirectToAuth() {
         // Save the job ID for after login
         if (this.currentJobId) {
             sessionStorage.setItem('pendingJobApplication', this.currentJobId);
         }
-        window.location.href = 'login.html';
-    }
-
-    // Redirect to register
-    redirectToRegister() {
-        // Save the job ID for after registration
-        if (this.currentJobId) {
-            sessionStorage.setItem('pendingJobApplication', this.currentJobId);
-        }
-        window.location.href = 'register.html';
+        // Save the current page to return after login
+        sessionStorage.setItem('returnUrl', window.location.href);
+        // Close modal and redirect
+        this.closeAuthModal();
+        window.location.href = 'auth.html';
     }
 
     // Submit application (placeholder)

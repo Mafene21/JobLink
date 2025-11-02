@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - JobLink</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="auth-container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--light);">
+        <div class="auth-card" style="background: white; padding: 40px; border-radius: 12px; box-shadow: var(--shadow-lg); text-align: center; max-width: 400px; width: 100%;">
+            <div style="margin-bottom: 30px;">
+                <i class="fas fa-handshake" style="font-size: 3rem; color: var(--primary); margin-bottom: 15px;"></i>
+                <h1 style="color: var(--dark); margin-bottom: 10px;">Welcome to JobLink</h1>
+                <p style="color: var(--gray);">Sign in to apply for jobs</p>
+            </div>
+
+            <button id="googleSignIn" style="width: 100%; background: white; border: 2px solid var(--light-gray); padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                <i class="fab fa-google" style="color: #DB4437;"></i>
+                Continue with Google
+            </button>
+
+            <p style="color: var(--gray); font-size: 0.9rem;">
+                By continuing, you agree to our Terms of Service
+            </p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider 
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
+            authDomain: "joblink-babb6.firebaseapp.com",
+            projectId: "joblink-babb6",
+            storageBucket: "joblink-babb6.firebasestorage.app",
+            messagingSenderId: "442169381701",
+            appId: "1:442169381701:web:d8ec90c72aab424d2d242c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        document.getElementById('googleSignIn').addEventListener('click', async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                // Redirect back to where they came from or home page
+                const returnUrl = sessionStorage.getItem('returnUrl') || 'index.html';
+                window.location.href = returnUrl;
+            } catch (error) {
+                alert('Error signing in: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

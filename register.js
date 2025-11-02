@@ -1,7 +1,17 @@
 // Firebase configuration
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -18,6 +28,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
 document.addEventListener('DOMContentLoaded', function() {
   const signupForm = document.getElementById('signupForm');
@@ -29,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const signupButton = document.getElementById('signupButton');
   const btnLoader = document.getElementById('btnLoader');
   const successMessage = document.getElementById('successMessage');
+  const googleSignupBtn = document.getElementById('googleSignup');
 
   // Mobile navigation toggle
   const hamburger = document.querySelector('.hamburger');
@@ -81,6 +93,9 @@ document.addEventListener('DOMContentLoaded', function() {
       registerUser();
     }
   });
+
+  // Google Signup
+  googleSignupBtn.addEventListener('click', signUpWithGoogle);
 
   // Validation functions
   function validateFullName() {
@@ -202,11 +217,15 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       
       // Show success message
-      showSuccess('Account created successfully! Redirecting to login...');
+      showSuccess('Account created successfully! Redirecting to your dashboard...');
       
-      // Redirect to login page after a delay
+      // Redirect to appropriate dashboard based on user type
       setTimeout(() => {
-        window.location.href = 'login.html';
+        if (userType === 'employer') {
+          window.location.href = 'employer_dashboard.html';
+        } else {
+          window.location.href = 'seeker_dashboard.html';
+        }
       }, 2000);
       
     } catch (error) {
@@ -235,6 +254,157 @@ document.addEventListener('DOMContentLoaded', function() {
       
       console.error('Registration error:', error);
     }
+  }
+
+  // Google Signup function
+  async function signUpWithGoogle() {
+    try {
+      // Show loading state on Google button
+      googleSignupBtn.disabled = true;
+      googleSignupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Signing up...</span>';
+      
+      // Show user type selection modal
+      const userType = await selectUserType();
+      if (!userType) {
+        googleSignupBtn.disabled = false;
+        googleSignupBtn.innerHTML = '<i class="fab fa-google"></i><span>Sign up with Google</span>';
+        return;
+      }
+      
+      // Sign in with Google
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      // Save user data to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        fullName: user.displayName,
+        email: user.email,
+        userType: userType,
+        createdAt: serverTimestamp(),
+        profileCompleted: false,
+        photoURL: user.photoURL
+      });
+      
+      // Show success message
+      showSuccess('Google account linked successfully! Redirecting to your dashboard...');
+      
+      // Redirect to appropriate dashboard based on user type
+      setTimeout(() => {
+        if (userType === 'employer') {
+          window.location.href = 'employer_dashboard.html';
+        } else {
+          window.location.href = 'seeker_dashboard.html';
+        }
+      }, 2000);
+      
+    } catch (error) {
+      // Handle errors
+      googleSignupBtn.disabled = false;
+      googleSignupBtn.innerHTML = '<i class="fab fa-google"></i><span>Sign up with Google</span>';
+      
+      const errorCode = error.code;
+      let errorMessage = 'An error occurred during Google sign up. Please try again.';
+      
+      if (errorCode === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign up was cancelled.';
+      } else if (errorCode === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked. Please allow popups for this site.';
+      } else if (errorCode === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorCode === 'auth/unauthorized-domain') {
+        errorMessage = 'Domain not authorized. Please contact support.';
+      }
+      
+      showError('emailError', errorMessage);
+      console.error('Google sign up error:', error);
+    }
+  }
+
+  // User type selection for Google signup
+  function selectUserType() {
+    return new Promise((resolve) => {
+      // Create modal for user type selection
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+      
+      modal.innerHTML = `
+        <div style="
+          background: white;
+          padding: 30px;
+          border-radius: 16px;
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+          max-width: 400px;
+          width: 90%;
+          text-align: center;
+        ">
+          <h3 style="margin-bottom: 20px; color: #1e293b;">Select Account Type</h3>
+          <p style="margin-bottom: 25px; color: #64748b;">Please choose how you want to use JobMatch Connect</p>
+          <button class="user-type-option" data-type="seeker" style="
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-weight: 600;
+          ">
+            <i class="fas fa-user-tie" style="margin-right: 10px;"></i>
+            Job Seeker
+          </button>
+          <button class="user-type-option" data-type="employer" style="
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-weight: 600;
+          ">
+            <i class="fas fa-building" style="margin-right: 10px;"></i>
+            Employer
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Add hover effects
+      const options = modal.querySelectorAll('.user-type-option');
+      options.forEach(option => {
+        option.addEventListener('mouseenter', function() {
+          this.style.borderColor = '#2563eb';
+          this.style.backgroundColor = '#dbeafe';
+        });
+        
+        option.addEventListener('mouseleave', function() {
+          this.style.borderColor = '#e2e8f0';
+          this.style.backgroundColor = 'white';
+        });
+        
+        option.addEventListener('click', function() {
+          const selectedType = this.getAttribute('data-type');
+          document.body.removeChild(modal);
+          resolve(selectedType);
+        });
+      });
+    });
   }
 
   function showSuccess(message) {

@@ -396,6 +396,56 @@ body {
   display: block;
 }
 
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 30px 0;
+  color: var(--gray);
+  font-size: 0.9rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.divider span {
+  padding: 0 15px;
+}
+
+/* Social Signup */
+.social-signup {
+  margin-bottom: 25px;
+}
+
+.btn-google {
+  width: 100%;
+  background-color: var(--white);
+  color: var(--dark);
+  border: 2px solid var(--light-gray);
+  padding: 14px 20px;
+  font-weight: 600;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-google:hover {
+  background-color: var(--light-gray);
+  border-color: var(--gray);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn-google i {
+  margin-right: 10px;
+  color: #DB4437;
+}
+
 /* Signup Footer */
 .signup-footer {
   text-align: center;
