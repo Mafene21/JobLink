@@ -230,7 +230,7 @@ class EmployerDashboard {
         const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/24x24?text=LOGO';
         const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
         
-        // Create job poster HTML
+        // Create job poster HTML - FIXED: Use posterUrl instead of jobImageUrl
         const jobPosterHTML = this.createJobPosterHTML(job);
         
         return `
@@ -268,7 +268,7 @@ class EmployerDashboard {
                 <div class="job-footer">
                     <div class="job-applicants">
                         <i class="fas fa-users"></i>
-                        ${job.applicantCount || 0} applicants
+                        ${job.applications || 0} applicants
                     </div>
                     <button class="view-candidates-btn" data-job-id="${job.id}">
                         View Potential Candidates
@@ -279,10 +279,14 @@ class EmployerDashboard {
     }
 
     createJobPosterHTML(job) {
-        if (job.jobImageUrl && job.jobImageUrl.trim() !== '' && job.jobImageUrl !== 'https://via.placeholder.com/150x150?text=Job+Image') {
+        // FIXED: Use posterUrl instead of jobImageUrl to match the job posting data structure
+        const posterUrl = job.posterUrl;
+        console.log('Job poster URL for job', job.id, ':', posterUrl);
+        
+        if (posterUrl && posterUrl.trim() !== '' && posterUrl !== 'https://via.placeholder.com/150x150?text=Job+Image') {
             return `
                 <div class="job-poster-container" data-job-id="${job.id}">
-                    <img src="${job.jobImageUrl}" 
+                    <img src="${posterUrl}" 
                          alt="${job.title || 'Job Poster'}" 
                          class="job-poster-image"
                          onerror="this.onerror=null; this.parentElement.outerHTML=window.employerDashboard.createNoPosterHTML('${job.id}');">
@@ -325,7 +329,7 @@ class EmployerDashboard {
 
     showJobImageModal(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
-        if (!job || !job.jobImageUrl) return;
+        if (!job || !job.posterUrl) return;
 
         const modal = document.createElement('div');
         modal.className = 'modal job-image-modal';
@@ -341,21 +345,21 @@ class EmployerDashboard {
                     <span class="close-modal">&times;</span>
                 </div>
                 <div class="modal-body" style="padding: 0;">
-                    <img src="${job.jobImageUrl}" 
+                    <img src="${job.posterUrl}" 
                          alt="${job.title || 'Job Poster'}" 
                          style="width: 100%; display: block;"
                          onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
                 </div>
-                <div class="job-image-info">
-                    <h4>${job.title || 'Untitled Job'}</h4>
-                    <div class="job-image-meta">
-                        <div>
+                <div class="job-image-info" style="padding: 20px; border-top: 1px solid #f1f5f9;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b;">${job.title || 'Untitled Job'}</h4>
+                    <div class="job-image-meta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: #64748b; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center;">
                             <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16?text=LOGO'">
                             <span>${companyName}</span>
                         </div>
-                        <div><i class="fas fa-map-marker-alt"></i> ${job.location || 'Remote'}</div>
-                        <div><i class="fas fa-money-bill-wave"></i> ${job.salary || 'Salary not specified'}</div>
-                        <div><i class="fas fa-clock"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> ${job.location || 'Remote'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-money-bill-wave" style="margin-right: 5px;"></i> ${job.salary || 'Salary not specified'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
                     </div>
                 </div>
             </div>
@@ -558,13 +562,16 @@ class EmployerDashboard {
         }
 
         // Skills match
-        if (job.requiredSkills && seeker.skills) {
+        if (job.requirements && seeker.skills) {
             totalFactors++;
-            const jobSkills = job.requiredSkills.map(skill => skill.toLowerCase());
-            const seekerSkills = seeker.skills.map(skill => skill.toLowerCase());
+            const jobSkills = this.extractSkillsFromRequirements(job.requirements);
+            const seekerSkills = Array.isArray(seeker.skills) ? seeker.skills : [];
             
-            const matchingSkills = jobSkills.filter(skill => 
-                seekerSkills.some(seekerSkill => seekerSkill.includes(skill) || skill.includes(seekerSkill))
+            const matchingSkills = jobSkills.filter(jobSkill => 
+                seekerSkills.some(seekerSkill => 
+                    seekerSkill.toLowerCase().includes(jobSkill.toLowerCase()) || 
+                    jobSkill.toLowerCase().includes(seekerSkill.toLowerCase())
+                )
             );
             
             if (matchingSkills.length > 0) {
@@ -573,6 +580,22 @@ class EmployerDashboard {
         }
 
         return totalFactors > 0 ? score / totalFactors : 0;
+    }
+
+    extractSkillsFromRequirements(requirements) {
+        if (!requirements) return [];
+        
+        // Simple skill extraction - you might want to make this more sophisticated
+        const commonSkills = ['javascript', 'react', 'node', 'python', 'java', 'html', 'css', 'sql', 'mongodb', 'aws'];
+        const foundSkills = [];
+        
+        commonSkills.forEach(skill => {
+            if (requirements.toLowerCase().includes(skill)) {
+                foundSkills.push(skill);
+            }
+        });
+        
+        return foundSkills.length > 0 ? foundSkills : ['various skills'];
     }
 
     extractSalary(salaryString) {
@@ -631,7 +654,7 @@ class EmployerDashboard {
     updateStats() {
         document.getElementById('activeJobsCount').textContent = this.jobs.length;
         
-        const totalApplicants = this.jobs.reduce((sum, job) => sum + (job.applicantCount || 0), 0);
+        const totalApplicants = this.jobs.reduce((sum, job) => sum + (job.applications || 0), 0);
         document.getElementById('totalApplicantsCount').textContent = totalApplicants;
         
         document.getElementById('potentialMatchesCount').textContent = this.potentialCandidatesCount;

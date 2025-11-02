@@ -3,16 +3,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebas
 import { 
     getFirestore, 
     collection, 
-    getDocs,
-    getDoc,
-    doc,
-    query,
-    where,
-    orderBy,
-    limit,
-    startAfter
+    addDoc,
+    serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
@@ -27,859 +22,464 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
-class JobsPage {
+class JobPosting {
     constructor() {
-        this.currentJobId = null;
-        this.allJobs = [];
-        this.filteredJobs = [];
-        this.currentFilters = {
-            jobType: ['full-time', 'part-time', 'contract', 'internship', 'remote'],
-            location: ['Kampala', 'Entebbe', 'Jinja', 'Mbarara', 'Remote']
-        };
-        this.searchQuery = '';
-        this.sortBy = 'newest';
-        this.lastVisible = null;
-        this.hasMoreJobs = true;
-        this.isLoading = false;
-        
+        this.currentUser = null;
+        this.selectedFile = null;
+        this.jobData = null;
         this.init();
     }
 
     init() {
+        this.checkAuthState();
         this.bindEvents();
-        this.loadAllJobs();
-        this.applySavedSearch();
+        this.setupFileUpload();
+    }
+
+    checkAuthState() {
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                this.currentUser = user;
+                console.log('User is authenticated:', user.uid);
+            } else {
+                console.log('User is not authenticated');
+                // Redirect to login if not authenticated
+                window.location.href = 'login.html';
+            }
+        });
     }
 
     bindEvents() {
-        // Mobile navigation
-        const hamburger = document.querySelector('.hamburger');
-        const navMenu = document.querySelector('.nav-menu');
-        
-        if (hamburger && navMenu) {
-            hamburger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hamburger.classList.toggle('active');
-                navMenu.classList.toggle('active');
+        // Form submission
+        const jobForm = document.getElementById('jobForm');
+        if (jobForm) {
+            jobForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleFormSubmit();
             });
         }
-        
-        document.querySelectorAll('.nav-menu a').forEach(link => {
-            link.addEventListener('click', () => {
-                hamburger?.classList.remove('active');
-                navMenu?.classList.remove('active');
-            });
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.navbar') && navMenu?.classList.contains('active')) {
-                hamburger?.classList.remove('active');
-                navMenu?.classList.remove('active');
-            }
-        });
 
-        // Filter events
-        this.bindFilterEvents();
-        
-        // Search events
-        this.bindSearchEvents();
-        
-        // Sort events
-        this.bindSortEvents();
-        
-        // Load more events
-        this.bindLoadMoreEvents();
-        
         // Modal events
-        this.bindModalEvents();
-    }
-
-    bindFilterEvents() {
-        // Job type filters
-        document.querySelectorAll('input[name="jobType"]').forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.applyFilters());
-        });
-
-        // Location filters
-        document.querySelectorAll('input[name="location"]').forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.applyFilters());
-        });
-
-        // Salary filter
-        const salaryRange = document.getElementById('salaryRange');
-        if (salaryRange) {
-            salaryRange.addEventListener('change', () => this.applyFilters());
+        const modalClose = document.getElementById('modalClose');
+        if (modalClose) {
+            modalClose.addEventListener('click', () => this.closePreviewModal());
         }
 
-        // Clear filters
-        const clearFiltersBtn = document.getElementById('clearFilters');
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => this.clearFilters());
+        const editJob = document.getElementById('editJob');
+        if (editJob) {
+            editJob.addEventListener('click', () => this.closePreviewModal());
         }
-    }
 
-    bindSearchEvents() {
-        const searchInput = document.getElementById('jobsSearchInput');
-        const searchButton = document.getElementById('jobsSearchButton');
+        const confirmPost = document.getElementById('confirmPost');
+        if (confirmPost) {
+            confirmPost.addEventListener('click', () => this.confirmJobPosting());
+        }
 
-        if (searchInput) {
-            searchInput.addEventListener('input', this.debounce(() => {
-                this.searchQuery = searchInput.value.trim();
-                this.applyFilters();
-            }, 300));
+        // Success modal events
+        const viewDashboard = document.getElementById('viewDashboard');
+        if (viewDashboard) {
+            viewDashboard.addEventListener('click', () => {
+                window.location.href = 'employer_dashboard.html';
+            });
+        }
 
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.searchQuery = searchInput.value.trim();
-                    this.applyFilters();
+        const postAnother = document.getElementById('postAnother');
+        if (postAnother) {
+            postAnother.addEventListener('click', () => {
+                this.closeSuccessModal();
+                this.resetForm();
+            });
+        }
+
+        // Close modals when clicking outside
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    if (modal.id === 'previewModal') this.closePreviewModal();
+                    if (modal.id === 'successModal') this.closeSuccessModal();
                 }
             });
-        }
-
-        if (searchButton) {
-            searchButton.addEventListener('click', () => {
-                this.searchQuery = searchInput?.value.trim() || '';
-                this.applyFilters();
-            });
-        }
-    }
-
-    bindSortEvents() {
-        const sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
-                this.sortBy = e.target.value;
-                this.applyFilters();
-            });
-        }
-    }
-
-    bindLoadMoreEvents() {
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => this.loadMoreJobs());
-        }
-    }
-
-    bindModalEvents() {
-        const jobModal = document.getElementById('jobModal');
-        const authModal = document.getElementById('authModal');
-        const modalClose = document.getElementById('modalClose');
-
-        if (modalClose) {
-            modalClose.addEventListener('click', () => this.closeJobModal());
-        }
-
-        [jobModal, authModal].forEach(modal => {
-            if (modal) {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        if (modal === jobModal) this.closeJobModal();
-                        if (modal === authModal) this.closeAuthModal();
-                    }
-                });
-            }
         });
 
+        // Close modals with Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                this.closeJobModal();
-                this.closeAuthModal();
+                this.closePreviewModal();
+                this.closeSuccessModal();
             }
         });
     }
 
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
+    setupFileUpload() {
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('poster');
+        const posterPreview = document.getElementById('posterPreview');
+        const browseBtn = document.querySelector('.browse-btn');
 
-    async loadAllJobs() {
-        const jobsGrid = document.getElementById('jobsGrid');
-        if (!jobsGrid) return;
-        
-        try {
-            jobsGrid.innerHTML = `
-                <div class="loading-state">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Loading jobs...</p>
-                </div>
-            `;
+        if (!fileUploadArea || !fileInput) return;
 
-            let jobsQuery;
-            
-            try {
-                jobsQuery = query(
-                    collection(db, 'jobs'),
-                    where('status', '==', 'active'),
-                    orderBy('createdAt', 'desc'),
-                    limit(12)
-                );
-            } catch (error) {
-                jobsQuery = query(
-                    collection(db, 'jobs'),
-                    where('status', '==', 'active'),
-                    limit(12)
-                );
-            }
-            
-            const jobsSnapshot = await getDocs(jobsQuery);
-            
-            if (jobsSnapshot.empty) {
-                this.showNoJobsMessage();
-                return;
-            }
-            
-            this.lastVisible = jobsSnapshot.docs[jobsSnapshot.docs.length - 1];
-            this.hasMoreJobs = jobsSnapshot.docs.length === 12;
-            
-            this.allJobs = [];
-            jobsSnapshot.forEach(doc => {
-                const jobData = doc.data();
-                this.allJobs.push({
-                    id: doc.id,
-                    ...jobData
-                });
-            });
-            
-            this.applyFilters();
-            
-        } catch (error) {
-            console.error('Error loading jobs:', error);
-            this.showErrorState(error);
-        }
-    }
-
-    async loadMoreJobs() {
-        if (this.isLoading || !this.hasMoreJobs) return;
-        
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        const spinner = loadMoreBtn?.querySelector('.fa-spinner');
-        const text = loadMoreBtn?.querySelector('span');
-        
-        if (loadMoreBtn && spinner && text) {
-            this.isLoading = true;
-            loadMoreBtn.disabled = true;
-            spinner.style.display = 'inline-block';
-            text.textContent = 'Loading...';
-        }
-        
-        try {
-            let jobsQuery;
-            
-            try {
-                jobsQuery = query(
-                    collection(db, 'jobs'),
-                    where('status', '==', 'active'),
-                    orderBy('createdAt', 'desc'),
-                    startAfter(this.lastVisible),
-                    limit(12)
-                );
-            } catch (error) {
-                this.hasMoreJobs = false;
-                return;
-            }
-            
-            const jobsSnapshot = await getDocs(jobsQuery);
-            
-            if (jobsSnapshot.empty) {
-                this.hasMoreJobs = false;
-                return;
-            }
-            
-            this.lastVisible = jobsSnapshot.docs[jobsSnapshot.docs.length - 1];
-            this.hasMoreJobs = jobsSnapshot.docs.length === 12;
-            
-            const newJobs = [];
-            jobsSnapshot.forEach(doc => {
-                const jobData = doc.data();
-                newJobs.push({
-                    id: doc.id,
-                    ...jobData
-                });
-            });
-            
-            this.allJobs = [...this.allJobs, ...newJobs];
-            this.applyFilters();
-            
-        } catch (error) {
-            console.error('Error loading more jobs:', error);
-            this.hasMoreJobs = false;
-        } finally {
-            this.isLoading = false;
-            if (loadMoreBtn && spinner && text) {
-                loadMoreBtn.disabled = false;
-                spinner.style.display = 'none';
-                text.textContent = 'Load More Jobs';
-                
-                if (!this.hasMoreJobs) {
-                    loadMoreBtn.style.display = 'none';
-                }
-            }
-        }
-    }
-
-    applyFilters() {
-        this.updateCurrentFilters();
-        
-        let filtered = [...this.allJobs];
-        
-        // Apply search query
-        if (this.searchQuery) {
-            const query = this.searchQuery.toLowerCase();
-            filtered = filtered.filter(job => 
-                job.title?.toLowerCase().includes(query) ||
-                job.companyName?.toLowerCase().includes(query) ||
-                job.skills?.some(skill => skill.toLowerCase().includes(query)) ||
-                job.description?.toLowerCase().includes(query)
-            );
-        }
-        
-        // Apply job type filters
-        if (this.currentFilters.jobType.length > 0) {
-            filtered = filtered.filter(job => 
-                this.currentFilters.jobType.includes(job.type)
-            );
-        }
-        
-        // Apply location filters
-        if (this.currentFilters.location.length > 0) {
-            filtered = filtered.filter(job => 
-                this.currentFilters.location.some(loc => 
-                    job.location?.toLowerCase().includes(loc.toLowerCase())
-                )
-            );
-        }
-        
-        // Apply salary filter
-        const salaryRange = document.getElementById('salaryRange');
-        if (salaryRange && salaryRange.value !== 'any') {
-            filtered = filtered.filter(job => {
-                const salary = this.extractSalaryNumber(job.salary);
-                const range = salaryRange.value;
-                
-                if (range === '0-1000') return salary >= 0 && salary <= 1000;
-                if (range === '1000-3000') return salary >= 1000 && salary <= 3000;
-                if (range === '3000-5000') return salary >= 3000 && salary <= 5000;
-                if (range === '5000+') return salary >= 5000;
-                
-                return true;
+        // Click on browse button
+        if (browseBtn) {
+            browseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fileInput.click();
             });
         }
-        
-        // Apply sorting
-        filtered = this.sortJobs(filtered);
-        
-        this.filteredJobs = filtered;
-        this.displayJobs();
+
+        // Click on upload area
+        fileUploadArea.addEventListener('click', (e) => {
+            if (e.target !== browseBtn) {
+                fileInput.click();
+            }
+        });
+
+        // Drag and drop events
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.classList.remove('dragover');
+        });
+
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileSelection(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.handleFileSelection(e.target.files[0]);
+            }
+        });
     }
 
-    updateCurrentFilters() {
-        // Job types
-        this.currentFilters.jobType = Array.from(document.querySelectorAll('input[name="jobType"]:checked'))
-            .map(checkbox => checkbox.value);
-        
-        // Locations
-        this.currentFilters.location = Array.from(document.querySelectorAll('input[name="location"]:checked'))
-            .map(checkbox => checkbox.value);
-    }
-
-    extractSalaryNumber(salaryString) {
-        if (!salaryString) return 0;
-        
-        // Extract numbers from strings like "$3,000 - $5,000" or "Negotiable"
-        const matches = salaryString.match(/\$?([0-9,]+)/);
-        if (matches && matches[1]) {
-            return parseInt(matches[1].replace(/,/g, ''));
-        }
-        
-        return 0;
-    }
-
-    sortJobs(jobs) {
-        switch (this.sortBy) {
-            case 'newest':
-                return jobs.sort((a, b) => {
-                    const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                    const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-                    return dateB - dateA;
-                });
-                
-            case 'oldest':
-                return jobs.sort((a, b) => {
-                    const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                    const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-                    return dateA - dateB;
-                });
-                
-            case 'salary-high':
-                return jobs.sort((a, b) => {
-                    const salaryA = this.extractSalaryNumber(a.salary);
-                    const salaryB = this.extractSalaryNumber(b.salary);
-                    return salaryB - salaryA;
-                });
-                
-            case 'salary-low':
-                return jobs.sort((a, b) => {
-                    const salaryA = this.extractSalaryNumber(a.salary);
-                    const salaryB = this.extractSalaryNumber(b.salary);
-                    return salaryA - salaryB;
-                });
-                
-            default:
-                return jobs;
-        }
-    }
-
-    displayJobs() {
-        const jobsGrid = document.getElementById('jobsGrid');
-        const jobsCount = document.getElementById('jobsCount');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        
-        if (!jobsGrid) return;
-        
-        if (this.filteredJobs.length === 0) {
-            this.showNoJobsMessage();
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
-            if (jobsCount) jobsCount.textContent = 'No jobs found';
+    handleFileSelection(file) {
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            this.showToast('Please select a valid image file (JPG, JPEG, PNG)', 'error');
             return;
         }
-        
-        if (jobsCount) {
-            jobsCount.textContent = `${this.filteredJobs.length} job${this.filteredJobs.length !== 1 ? 's' : ''} found`;
+
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+        if (file.size > maxSize) {
+            this.showToast('File size must be less than 5MB', 'error');
+            return;
         }
-        
-        let jobsHTML = '';
-        this.filteredJobs.forEach(job => {
-            jobsHTML += this.createJobCard(job);
-        });
-        
-        jobsGrid.innerHTML = jobsHTML;
-        
-        if (loadMoreBtn) {
-            loadMoreBtn.style.display = this.hasMoreJobs ? 'block' : 'none';
-        }
+
+        this.selectedFile = file;
+        this.displayFilePreview(file);
     }
 
-    createJobCard(job) {
-        let createdAt;
-        if (job.createdAt && typeof job.createdAt.toDate === 'function') {
-            createdAt = job.createdAt.toDate();
-        } else if (job.createdAt instanceof Date) {
-            createdAt = job.createdAt;
-        } else if (job.createdAt) {
-            createdAt = new Date(job.createdAt);
-        } else {
-            createdAt = new Date();
-        }
-        
-        const isFeatured = job.featured || false;
-        const isUrgent = job.urgent || false;
-        
-        // Generate SVG logo
-        const logoDataURL = this.generateCompanyLogo(job.companyName);
-        
-        // Safe skills handling
-        const getSkillsHTML = () => {
-            try {
-                if (!job.skills) {
-                    return '<span class="skill-tag">Various Skills</span>';
-                }
-                
-                let skillsArray = [];
-                
-                if (Array.isArray(job.skills)) {
-                    skillsArray = job.skills;
-                } else if (typeof job.skills === 'string') {
-                    skillsArray = job.skills.split(/[,|;]/).map(s => s.trim()).filter(s => s);
-                } else if (typeof job.skills === 'object' && job.skills !== null) {
-                    skillsArray = Object.values(job.skills).filter(s => typeof s === 'string');
-                }
-                
-                const validSkills = skillsArray
-                    .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
-                    .slice(0, 3);
-                
-                if (validSkills.length === 0) {
-                    return '<span class="skill-tag">Various Skills</span>';
-                }
-                
-                return validSkills.map(skill => 
-                    `<span class="skill-tag">${skill}</span>`
-                ).join('');
-                
-            } catch (error) {
-                console.warn('Error processing skills for job:', job.id, error);
-                return '<span class="skill-tag">Various Skills</span>';
-            }
+    displayFilePreview(file) {
+        const posterPreview = document.getElementById('posterPreview');
+        if (!posterPreview) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            posterPreview.innerHTML = `
+                <div class="preview-item">
+                    <div class="preview-info">
+                        <i class="fas fa-file-image"></i>
+                        <span>${file.name}</span>
+                    </div>
+                    <div class="preview-actions">
+                        <button type="button" onclick="jobPosting.removeFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            posterPreview.classList.add('show');
         };
-        
-        return `
-            <div class="job-card ${isFeatured ? 'featured' : ''} ${isUrgent ? 'urgent' : ''}" data-job-id="${job.id}">
-                <div class="job-header">
-                    <div class="company-logo">
-                        <img src="${logoDataURL}" alt="${job.companyName || 'Company'}" width="50" height="50">
-                    </div>
-                    <div class="job-info">
-                        <h3>${job.title || 'Untitled Position'}</h3>
-                        <p class="company-name">${job.companyName || 'Company'}</p>
-                    </div>
-                    <span class="job-type ${job.type || 'full-time'}">${this.formatJobType(job.type)}</span>
-                </div>
-                <div class="job-details">
-                    <span><i class="fas fa-map-marker-alt"></i> ${job.location || 'Remote'}</span>
-                    <span><i class="fas fa-money-bill-wave"></i> ${job.salary || 'Negotiable'}</span>
-                    <span><i class="fas fa-clock"></i> ${this.formatDate(createdAt)}</span>
-                </div>
-                <div class="job-skills">
-                    ${getSkillsHTML()}
-                </div>
-                <button class="btn-apply" onclick="window.jobsPage.showJobDetails('${job.id}')">
-                    View Details & Apply
-                </button>
-            </div>
-        `;
+        reader.readAsDataURL(file);
     }
 
-    generateCompanyLogo(companyName, size = 50) {
-        const initials = companyName
-            ? companyName.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2)
-            : 'CO';
+    removeFile() {
+        this.selectedFile = null;
+        const posterPreview = document.getElementById('posterPreview');
+        const fileInput = document.getElementById('poster');
         
-        const colors = ['#2c5aa0', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
-        const color = colors[companyName?.length % colors.length] || '#2c5aa0';
+        if (posterPreview) {
+            posterPreview.classList.remove('show');
+            posterPreview.innerHTML = '';
+        }
         
-        const svgString = `
-            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-                <rect width="100%" height="100%" fill="${color}" rx="8"/>
-                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" 
-                      fill="white" font-weight="bold" font-size="${size * 0.4}">
-                    ${initials}
-                </text>
-            </svg>
-        `;
-        
-        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
-    }
-
-    showNoJobsMessage() {
-        const jobsGrid = document.getElementById('jobsGrid');
-        if (!jobsGrid) return;
-        
-        jobsGrid.innerHTML = `
-            <div class="no-jobs-state">
-                <i class="fas fa-search"></i>
-                <h3>No Jobs Found</h3>
-                <p>We couldn't find any jobs matching your criteria. Try adjusting your filters or search terms.</p>
-                <button onclick="window.jobsPage.clearFilters()" class="btn btn-primary">
-                    Clear All Filters
-                </button>
-            </div>
-        `;
-    }
-
-    showErrorState(error) {
-        const jobsGrid = document.getElementById('jobsGrid');
-        if (!jobsGrid) return;
-        
-        jobsGrid.innerHTML = `
-            <div class="no-jobs-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error Loading Jobs</h3>
-                <p>There was a problem loading job listings. Please try again.</p>
-                <button onclick="window.jobsPage.loadAllJobs()" class="btn btn-primary">
-                    <i class="fas fa-redo"></i> Try Again
-                </button>
-            </div>
-        `;
-    }
-
-    clearFilters() {
-        // Reset checkboxes
-        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = true;
-        });
-        
-        // Reset salary dropdown
-        const salaryRange = document.getElementById('salaryRange');
-        if (salaryRange) salaryRange.value = 'any';
-        
-        // Reset search
-        const searchInput = document.getElementById('jobsSearchInput');
-        if (searchInput) searchInput.value = '';
-        this.searchQuery = '';
-        
-        // Reset sort
-        const sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) sortSelect.value = 'newest';
-        this.sortBy = 'newest';
-        
-        this.applyFilters();
-    }
-
-    applySavedSearch() {
-        const savedSearch = sessionStorage.getItem('lastSearch');
-        if (savedSearch) {
-            try {
-                const searchData = JSON.parse(savedSearch);
-                const searchInput = document.getElementById('jobsSearchInput');
-                
-                if (searchData.query && searchInput) {
-                    searchInput.value = searchData.query;
-                    this.searchQuery = searchData.query;
-                }
-                
-                sessionStorage.removeItem('lastSearch');
-                
-            } catch (error) {
-                console.error('Error applying saved search:', error);
-            }
+        if (fileInput) {
+            fileInput.value = '';
         }
     }
 
-    async showJobDetails(jobId) {
-        this.currentJobId = jobId;
+    async handleFormSubmit() {
+        // Validate form
+        if (!this.validateForm()) {
+            return;
+        }
+
+        // Get form data
+        const formData = this.getFormData();
         
+        // Show loading state
+        this.setButtonLoading(true);
+
         try {
-            let jobData;
+            // Store job data for preview
+            this.jobData = formData;
             
-            if (jobId.startsWith('demo-')) {
-                // Handle demo jobs
-                const demoJobs = {
-                    'demo-1': {
-                        title: 'Senior Software Engineer',
-                        companyName: 'Tech Solutions Ltd',
-                        type: 'full-time',
-                        location: 'Kampala',
-                        salary: '$3,000 - $5,000',
-                        skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'AWS'],
-                        description: 'We are looking for a skilled Senior Software Engineer to join our dynamic team. You will be responsible for developing and maintaining high-quality software solutions.',
-                        requirements: [
-                            '5+ years of experience in software development',
-                            'Strong proficiency in JavaScript and React',
-                            'Experience with Node.js and TypeScript',
-                            'Knowledge of AWS services',
-                            'Excellent problem-solving skills'
-                        ],
-                        responsibilities: [
-                            'Develop and maintain web applications',
-                            'Collaborate with cross-functional teams',
-                            'Write clean, maintainable code',
-                            'Participate in code reviews',
-                            'Mentor junior developers'
-                        ]
-                    },
-                    'demo-2': {
-                        title: 'Registered Nurse',
-                        companyName: 'City Hospital',
-                        type: 'full-time',
-                        location: 'Mbarara',
-                        salary: '$1,500 - $2,500',
-                        skills: ['Nursing', 'Patient Care', 'BLS Certified', 'ACLS', 'Emergency Care'],
-                        description: 'Join our dedicated healthcare team as a Registered Nurse. Provide exceptional patient care in a fast-paced hospital environment.',
-                        requirements: [
-                            'Valid nursing license',
-                            'BLS and ACLS certification',
-                            '2+ years of hospital experience',
-                            'Excellent communication skills',
-                            'Ability to work in a team environment'
-                        ],
-                        responsibilities: [
-                            'Provide direct patient care',
-                            'Administer medications and treatments',
-                            'Monitor patient conditions',
-                            'Collaborate with healthcare team',
-                            'Maintain patient records'
-                        ]
-                    },
-                    'demo-3': {
-                        title: 'Mathematics Teacher',
-                        companyName: 'Green Valley School',
-                        type: 'part-time',
-                        location: 'Fort Portal',
-                        salary: '$800 - $1,200',
-                        skills: ['Mathematics', 'Teaching', 'Curriculum', 'Classroom Management'],
-                        description: 'Inspiring Mathematics Teacher needed to join our school community. Help students develop strong mathematical foundations.',
-                        requirements: [
-                            'Teaching certification',
-                            'Degree in Mathematics or related field',
-                            '2+ years teaching experience',
-                            'Strong classroom management skills',
-                            'Passion for education'
-                        ],
-                        responsibilities: [
-                            'Plan and deliver engaging lessons',
-                            'Assess student progress',
-                            'Provide individualized support',
-                            'Participate in school activities',
-                            'Communicate with parents'
-                        ]
-                    }
-                };
-                jobData = demoJobs[jobId] || demoJobs['demo-1'];
-            } else {
-                // Get real job from Firebase
-                const jobDoc = await getDoc(doc(db, 'jobs', jobId));
-                if (!jobDoc.exists()) {
-                    throw new Error('Job not found');
-                }
-                jobData = jobDoc.data();
-            }
+            // Update preview modal
+            this.updatePreviewModal(formData);
             
-            this.populateJobModal(jobData);
-            this.showModal('jobModal');
+            // Show preview modal
+            this.showPreviewModal();
             
         } catch (error) {
-            console.error('Error loading job details:', error);
-            alert('Error loading job details. Please try again.');
+            console.error('Error preparing preview:', error);
+            this.showToast('Error preparing job preview', 'error');
+        } finally {
+            this.setButtonLoading(false);
         }
     }
 
-    populateJobModal(jobData) {
-        const modalTitle = document.getElementById('modalJobTitle');
-        const modalDetails = document.getElementById('modalJobDetails');
-        
-        if (!modalTitle || !modalDetails) return;
-        
-        modalTitle.textContent = jobData.title || 'Job Details';
-        
-        const skillsHTML = Array.isArray(jobData.skills) 
-            ? jobData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')
-            : '<span class="skill-tag">Various Skills</span>';
-        
-        const requirementsHTML = Array.isArray(jobData.requirements)
-            ? jobData.requirements.map(req => `<li>${req}</li>`).join('')
-            : '<li>No specific requirements listed</li>';
+    validateForm() {
+        const requiredFields = [
+            'jobTitle',
+            'companyName',
+            'category',
+            'location',
+            'jobType',
+            'requirements',
+            'description'
+        ];
+
+        let isValid = true;
+
+        requiredFields.forEach(fieldName => {
+            const field = document.getElementById(fieldName);
+            const inputGroup = field.closest('.input-group');
             
-        const responsibilitiesHTML = Array.isArray(jobData.responsibilities)
-            ? jobData.responsibilities.map(resp => `<li>${resp}</li>`).join('')
-            : '<li>No specific responsibilities listed</li>';
-        
-        modalDetails.innerHTML = `
-            <div class="job-meta">
-                <div class="meta-item">
-                    <i class="fas fa-building"></i>
-                    <span>${jobData.companyName || 'Company'}</span>
-                </div>
-                <div class="meta-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>${jobData.location || 'Remote'}</span>
-                </div>
-                <div class="meta-item">
-                    <i class="fas fa-money-bill-wave"></i>
-                    <span>${jobData.salary || 'Negotiable'}</span>
-                </div>
-                <div class="meta-item">
-                    <i class="fas fa-clock"></i>
-                    <span>${this.formatJobType(jobData.type)}</span>
-                </div>
-            </div>
-            
-            <div class="job-detail-item">
-                <h3>Job Description</h3>
-                <p>${jobData.description || 'No description available.'}</p>
-            </div>
-            
-            <div class="job-detail-item">
-                <h3>Requirements</h3>
-                <ul>
-                    ${requirementsHTML}
-                </ul>
-            </div>
-            
-            <div class="job-detail-item">
-                <h3>Responsibilities</h3>
-                <ul>
-                    ${responsibilitiesHTML}
-                </ul>
-            </div>
-            
-            <div class="job-detail-item">
-                <h3>Skills Required</h3>
-                <div class="job-skills">
-                    ${skillsHTML}
-                </div>
-            </div>
-        `;
+            if (!field.value.trim()) {
+                inputGroup.classList.add('error');
+                isValid = false;
+            } else {
+                inputGroup.classList.remove('error');
+            }
+        });
+
+        return isValid;
     }
 
-    // Handle job application
-    handleJobApplication() {
-        const isLoggedIn = this.checkUserAuth();
+    getFormData() {
+        return {
+            jobTitle: document.getElementById('jobTitle').value.trim(),
+            companyName: document.getElementById('companyName').value.trim(),
+            category: document.getElementById('category').value,
+            location: document.getElementById('location').value.trim(),
+            jobType: document.getElementById('jobType').value,
+            requirements: document.getElementById('requirements').value.trim(),
+            description: document.getElementById('description').value.trim(),
+            salary: document.getElementById('salary').value.trim(),
+            applicationDeadline: document.getElementById('applicationDeadline').value,
+            posterFile: this.selectedFile
+        };
+    }
+
+    updatePreviewModal(formData) {
+        // Update basic job info
+        document.querySelector('.preview-job-title').textContent = formData.jobTitle;
+        document.querySelector('.preview-company').textContent = formData.companyName;
+        document.querySelector('.preview-location').textContent = formData.location;
+        document.querySelector('.preview-job-type').textContent = this.formatJobType(formData.jobType);
+        document.querySelector('.preview-category').textContent = this.formatCategory(formData.category);
         
-        if (!isLoggedIn) {
-            this.closeJobModal();
-            this.showAuthModal();
+        // Update salary
+        const salaryElement = document.querySelector('.preview-salary');
+        salaryElement.textContent = formData.salary || 'Salary not specified';
+        
+        // Update deadline
+        const deadlineElement = document.querySelector('.preview-deadline');
+        if (formData.applicationDeadline) {
+            const deadlineDate = new Date(formData.applicationDeadline);
+            deadlineElement.textContent = `Apply by ${deadlineDate.toLocaleDateString()}`;
         } else {
-            this.submitApplication();
+            deadlineElement.textContent = 'No deadline';
+        }
+        
+        // Update requirements and description
+        document.querySelector('.preview-requirements').textContent = formData.requirements;
+        document.querySelector('.preview-description').textContent = formData.description;
+        
+        // Update poster image if available
+        const posterImage = document.getElementById('posterImage');
+        if (formData.posterFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                posterImage.innerHTML = `<img src="${e.target.result}" alt="Job Poster">`;
+            };
+            reader.readAsDataURL(formData.posterFile);
+        } else {
+            posterImage.innerHTML = `
+                <div class="no-image">
+                    <i class="fas fa-image"></i>
+                    <p>No poster uploaded</p>
+                </div>
+            `;
         }
     }
 
-    // Check user authentication
-    checkUserAuth() {
-        return auth.currentUser !== null;
-    }
-
-    // Show authentication modal
-    showAuthModal() {
-        this.showModal('authModal');
-    }
-
-    // Close authentication modal
-    closeAuthModal() {
-        this.hideModal('authModal');
-    }
-
-    // Close job modal
-    closeJobModal() {
-        this.hideModal('jobModal');
-        this.currentJobId = null;
-    }
-
-    // Show modal
-    showModal(modalId) {
-        const modal = document.getElementById(modalId);
+    showPreviewModal() {
+        const modal = document.getElementById('previewModal');
         if (modal) {
-            modal.classList.add('active');
+            modal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
     }
 
-    // Hide modal
-    hideModal(modalId) {
-        const modal = document.getElementById(modalId);
+    closePreviewModal() {
+        const modal = document.getElementById('previewModal');
         if (modal) {
-            modal.classList.remove('active');
+            modal.classList.remove('show');
             document.body.style.overflow = '';
         }
     }
 
-    // Redirect to auth page
-    redirectToAuth() {
-        // Save the job ID for after login
-        if (this.currentJobId) {
-            sessionStorage.setItem('pendingJobApplication', this.currentJobId);
+    async confirmJobPosting() {
+        if (!this.jobData) {
+            this.showToast('No job data to post', 'error');
+            return;
         }
-        // Save the current page to return after login
-        sessionStorage.setItem('returnUrl', window.location.href);
-        // Close modal and redirect
-        this.closeAuthModal();
-        window.location.href = 'auth.html';
+
+        const confirmBtn = document.getElementById('confirmPost');
+        this.setConfirmButtonLoading(true);
+
+        try {
+            // Upload poster image if available
+            let posterUrl = '';
+            if (this.jobData.posterFile) {
+                posterUrl = await this.uploadPosterImage(this.jobData.posterFile);
+            }
+
+            // Prepare job data for Firebase
+            const jobDataForFirebase = {
+                title: this.jobData.jobTitle,
+                companyName: this.jobData.companyName,
+                category: this.jobData.category,
+                location: this.jobData.location,
+                type: this.jobData.jobType,
+                requirements: this.jobData.requirements,
+                description: this.jobData.description,
+                salary: this.jobData.salary || 'Negotiable',
+                applicationDeadline: this.jobData.applicationDeadline || null,
+                posterUrl: posterUrl,
+                employerId: this.currentUser.uid,
+                employerEmail: this.currentUser.email,
+                status: 'active',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                applications: 0,
+                views: 0
+            };
+
+            // Save to Firebase
+            const docRef = await addDoc(collection(db, 'jobs'), jobDataForFirebase);
+            
+            console.log('Job posted successfully with ID:', docRef.id);
+            
+            // Close preview modal and show success
+            this.closePreviewModal();
+            this.showSuccessModal();
+            
+        } catch (error) {
+            console.error('Error posting job:', error);
+            this.showToast('Error posting job: ' + error.message, 'error');
+        } finally {
+            this.setConfirmButtonLoading(false);
+        }
     }
 
-    // Submit application (placeholder)
-    submitApplication() {
-        // Implement actual application submission
-        alert('Application submitted successfully!');
-        this.closeJobModal();
+    async uploadPosterImage(file) {
+        try {
+            // Create a unique filename
+            const fileExtension = file.name.split('.').pop();
+            const fileName = `job-posters/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+            
+            // Create storage reference
+            const storageRef = ref(storage, fileName);
+            
+            // Upload file
+            const snapshot = await uploadBytes(storageRef, file);
+            
+            // Get download URL
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            
+            return downloadURL;
+        } catch (error) {
+            console.error('Error uploading poster:', error);
+            throw new Error('Failed to upload poster image');
+        }
+    }
+
+    showSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    closeSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    }
+
+    resetForm() {
+        const form = document.getElementById('jobForm');
+        if (form) {
+            form.reset();
+        }
+        this.removeFile();
+        this.jobData = null;
+    }
+
+    setButtonLoading(loading) {
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            if (loading) {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+            } else {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        }
+    }
+
+    setConfirmButtonLoading(loading) {
+        const confirmBtn = document.getElementById('confirmPost');
+        if (confirmBtn) {
+            if (loading) {
+                confirmBtn.classList.add('loading');
+                confirmBtn.disabled = true;
+            } else {
+                confirmBtn.classList.remove('loading');
+                confirmBtn.disabled = false;
+            }
+        }
     }
 
     formatJobType(jobType) {
@@ -888,35 +488,59 @@ class JobsPage {
             'part-time': 'Part Time',
             'contract': 'Contract',
             'internship': 'Internship',
-            'remote': 'Remote',
-            'freelance': 'Freelance'
+            'remote': 'Remote'
         };
-        return types[jobType] || jobType || 'Full Time';
+        return types[jobType] || jobType;
     }
 
-    formatDate(date) {
-        if (!date) return 'Recently';
-        
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays}d ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-        if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
-        
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-        });
+    formatCategory(category) {
+        const categories = {
+            'it': 'Information Technology',
+            'education': 'Education',
+            'finance': 'Business',
+            'health': 'Healthcare',
+            'engineering': 'Engineering',
+            'marketing': 'Marketing',
+            'agriculture': 'Agriculture',
+            'construction': 'Construction',
+            'other': 'Other'
+        };
+        return categories[category] || category;
+    }
+
+    showToast(message, type = 'info') {
+        // Remove existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
+
+        // Create new toast
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Remove toast after 5 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 5000);
     }
 }
 
-// Initialize the jobs page
-let jobsPage;
+// Initialize the job posting functionality
+let jobPosting;
 
 document.addEventListener('DOMContentLoaded', function() {
-    jobsPage = new JobsPage();
-    window.jobsPage = jobsPage;
+    jobPosting = new JobPosting();
+    window.jobPosting = jobPosting;
 });
