@@ -578,3 +578,136 @@ body {
     font-size: 0.85rem;
   }
 }
+
+/* Domain authorization alerts */
+.domain-alert {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.alert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.alert-header i {
+  font-size: 1.3rem;
+}
+
+.alert-content p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.authorized-domains, .quick-fixes {
+  margin: 20px 0;
+}
+
+.authorized-domains h4, .quick-fixes h4 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+}
+
+.authorized-domains ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+}
+
+.authorized-domains li {
+  padding: 5px 0;
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 5px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.fix-option {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border-left: 4px solid #fff;
+  text-align: left;
+}
+
+.fix-option code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+  margin: 5px 0;
+}
+
+.fix-option strong {
+  color: #ffeaa7;
+}
+
+/* No account message */
+.no-account-message {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.no-account-message a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.no-account-message a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive design for domain alerts */
+@media (max-width: 768px) {
+  .domain-alert {
+    padding: 15px;
+  }
+  
+  .alert-header {
+    font-size: 1rem;
+  }
+  
+  .authorized-domains li {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+  }
+  
+  .fix-option {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .domain-alert {
+    padding: 12px;
+  }
+  
+  .alert-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 5px;
+  }
+  
+  .authorized-domains ul {
+    padding: 0 10px;
+  }
+}
