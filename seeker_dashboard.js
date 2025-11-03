@@ -10,6 +10,7 @@ class SeekerDashboard {
         this.currentUser = null;
         this.currentJobApplication = null;
         this.selectedResumeFile = null;
+        this.employersData = new Map();
         this.init();
     }
 
@@ -21,7 +22,6 @@ class SeekerDashboard {
     }
 
     initializeFirebase() {
-        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
             authDomain: "joblink-babb6.firebaseapp.com",
@@ -33,7 +33,6 @@ class SeekerDashboard {
         };
 
         try {
-            // Check if Firebase is already initialized
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
             }
@@ -55,16 +54,14 @@ class SeekerDashboard {
                     resolve();
                 } else {
                     console.log("No user authenticated");
-                    // Show login prompt instead of auto-redirecting
                     this.showLoginPrompt();
-                    resolve(); // Resolve anyway to continue loading
+                    resolve();
                 }
             });
         });
     }
 
     showLoginPrompt() {
-        // Create a login prompt overlay
         const loginPrompt = document.createElement('div');
         loginPrompt.className = 'login-prompt-overlay';
         loginPrompt.innerHTML = `
@@ -86,76 +83,35 @@ class SeekerDashboard {
                 </div>
             </div>
         `;
-        
         document.body.appendChild(loginPrompt);
     }
 
     bindEvents() {
-        // Mobile navigation
         this.bindMobileNavigation();
         
-        // Search functionality
         const searchInput = document.getElementById('jobSearch');
         const jobFilter = document.getElementById('jobFilter');
         const refreshMatchesBtn = document.getElementById('refreshMatchesBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.handleSearch(e.target.value);
-            });
-        }
-
-        if (jobFilter) {
-            jobFilter.addEventListener('change', (e) => {
-                this.handleFilter(e.target.value);
-            });
-        }
-
-        if (refreshMatchesBtn) {
-            refreshMatchesBtn.addEventListener('click', () => {
-                this.refreshJobMatches();
-            });
-        }
-
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.handleLogout();
-            });
-        }
+        if (searchInput) searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        if (jobFilter) jobFilter.addEventListener('change', (e) => this.handleFilter(e.target.value));
+        if (refreshMatchesBtn) refreshMatchesBtn.addEventListener('click', () => this.refreshJobMatches());
+        if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); this.handleLogout(); });
 
         // Modal events
         const closeModalBtn = document.getElementById('closeApplicationModal');
         const cancelModalBtn = document.getElementById('cancelApplication');
         const submitModalBtn = document.getElementById('submitApplication');
         const closeJobDetailsModalBtn = document.getElementById('closeJobDetailsModal');
+        const closeEmployerModalBtn = document.getElementById('closeEmployerModal');
 
-        if (closeModalBtn) {
-            closeModalBtn.addEventListener('click', () => {
-                this.hideApplicationModal();
-            });
-        }
+        if (closeModalBtn) closeModalBtn.addEventListener('click', () => this.hideApplicationModal());
+        if (cancelModalBtn) cancelModalBtn.addEventListener('click', () => this.hideApplicationModal());
+        if (submitModalBtn) submitModalBtn.addEventListener('click', () => this.submitApplication());
+        if (closeJobDetailsModalBtn) closeJobDetailsModalBtn.addEventListener('click', () => this.hideJobDetailsModal());
+        if (closeEmployerModalBtn) closeEmployerModalBtn.addEventListener('click', () => this.hideEmployerModal());
 
-        if (cancelModalBtn) {
-            cancelModalBtn.addEventListener('click', () => {
-                this.hideApplicationModal();
-            });
-        }
-
-        if (submitModalBtn) {
-            submitModalBtn.addEventListener('click', () => {
-                this.submitApplication();
-            });
-        }
-
-        if (closeJobDetailsModalBtn) {
-            closeJobDetailsModalBtn.addEventListener('click', () => {
-                this.hideJobDetailsModal();
-            });
-        }
-
-        // File upload events
         this.setupFileUpload();
     }
 
@@ -168,8 +124,6 @@ class SeekerDashboard {
                 e.stopPropagation();
                 hamburger.classList.toggle('active');
                 navLinks.classList.toggle('active');
-                
-                // Add overlay when menu is open
                 if (navLinks.classList.contains('active')) {
                     this.createMenuOverlay();
                 } else {
@@ -177,7 +131,6 @@ class SeekerDashboard {
                 }
             });
             
-            // Close menu when clicking on navigation links
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', () => {
                     hamburger.classList.remove('active');
@@ -186,7 +139,6 @@ class SeekerDashboard {
                 });
             });
 
-            // Close menu when clicking outside
             document.addEventListener('click', (e) => {
                 if (!navLinks.contains(e.target) && !hamburger.contains(e.target) && navLinks.classList.contains('active')) {
                     hamburger.classList.remove('active');
@@ -194,15 +146,11 @@ class SeekerDashboard {
                     this.removeMenuOverlay();
                 }
             });
-        } else {
-            console.error('Mobile navigation elements not found');
         }
     }
 
     createMenuOverlay() {
-        // Remove existing overlay if any
         this.removeMenuOverlay();
-        
         const overlay = document.createElement('div');
         overlay.className = 'menu-overlay active';
         document.body.appendChild(overlay);
@@ -210,7 +158,6 @@ class SeekerDashboard {
         overlay.addEventListener('click', () => {
             const hamburger = document.querySelector('.hamburger');
             const navLinks = document.querySelector('.nav-links');
-            
             if (hamburger && navLinks) {
                 hamburger.classList.remove('active');
                 navLinks.classList.remove('active');
@@ -221,9 +168,7 @@ class SeekerDashboard {
 
     removeMenuOverlay() {
         const overlay = document.querySelector('.menu-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
+        if (overlay) overlay.remove();
     }
 
     setupFileUpload() {
@@ -231,26 +176,14 @@ class SeekerDashboard {
         const resumeUploadArea = document.getElementById('resumeUploadArea');
 
         if (resumeUpload && resumeUploadArea) {
-            // Click to upload
-            resumeUploadArea.addEventListener('click', () => {
-                resumeUpload.click();
-            });
-
-            // File selection
-            resumeUpload.addEventListener('change', (e) => {
-                this.handleFileSelect(e.target.files);
-            });
-
-            // Drag and drop
+            resumeUploadArea.addEventListener('click', () => resumeUpload.click());
+            resumeUpload.addEventListener('change', (e) => this.handleFileSelect(e.target.files));
+            
             resumeUploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 resumeUploadArea.classList.add('dragover');
             });
-
-            resumeUploadArea.addEventListener('dragleave', () => {
-                resumeUploadArea.classList.remove('dragover');
-            });
-
+            resumeUploadArea.addEventListener('dragleave', () => resumeUploadArea.classList.remove('dragover'));
             resumeUploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 resumeUploadArea.classList.remove('dragover');
@@ -261,17 +194,14 @@ class SeekerDashboard {
 
     handleFileSelect(files) {
         if (files.length === 0) return;
-
         const file = files[0];
         
-        // Validate file type
         const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
         if (!allowedTypes.includes(file.type)) {
             this.showToast('Please upload a PDF, DOC, or DOCX file', 'error');
             return;
         }
 
-        // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
             this.showToast('File size must be less than 5MB', 'error');
             return;
@@ -313,10 +243,7 @@ class SeekerDashboard {
             resumePreview.classList.remove('show');
             resumePreview.innerHTML = '';
         }
-        
-        if (resumeUpload) {
-            resumeUpload.value = '';
-        }
+        if (resumeUpload) resumeUpload.value = '';
     }
 
     formatFileSize(bytes) {
@@ -329,14 +256,12 @@ class SeekerDashboard {
 
     async loadDashboardData() {
         try {
-            // Only load data if user is authenticated
             if (this.currentUser) {
                 await this.loadUserProfile();
                 await this.loadApplications();
                 await this.loadJobMatches();
                 this.updateGreeting();
             } else {
-                // Show demo data or empty state
                 this.initializeEmptyData();
             }
         } catch (error) {
@@ -360,7 +285,6 @@ class SeekerDashboard {
                 this.renderUserProfile();
                 this.calculateProfileCompletion();
             } else {
-                // Show profile setup prompt instead of redirecting
                 this.showProfileSetupPrompt();
                 this.initializeEmptyData();
             }
@@ -371,7 +295,6 @@ class SeekerDashboard {
     }
 
     showProfileSetupPrompt() {
-        // Create a subtle prompt for profile setup
         const existingPrompt = document.querySelector('.profile-setup-prompt');
         if (existingPrompt) return;
 
@@ -381,13 +304,10 @@ class SeekerDashboard {
             <div class="prompt-content">
                 <i class="fas fa-user-plus"></i>
                 <span>Complete your profile to get better job matches</span>
-                <button class="btn-setup" onclick="location.href='seeker_edit_profile.html'">
-                    Setup Profile
-                </button>
+                <a href="seeker_edit_profile.html" class="btn-setup">Setup Profile</a>
             </div>
         `;
         
-        // Add to the top of the dashboard
         const dashboardHeader = document.querySelector('.dashboard-header');
         if (dashboardHeader) {
             dashboardHeader.parentNode.insertBefore(prompt, dashboardHeader);
@@ -395,7 +315,6 @@ class SeekerDashboard {
     }
 
     initializeEmptyData() {
-        // Set all data to empty/loading state
         this.userProfile = {
             fullName: "Guest User",
             professionalTitle: "Update your profile",
@@ -403,10 +322,7 @@ class SeekerDashboard {
             highestEducation: "Not specified",
             totalExperience: "Not specified",
             skills: ["Add your skills"],
-            stats: {
-                applied: 0,
-                matches: 0
-            }
+            stats: { applied: 0, matches: 0 }
         };
 
         this.jobsData = [];
@@ -428,8 +344,6 @@ class SeekerDashboard {
 
         try {
             const db = firebase.firestore();
-            
-            // Try the ordered query first (if index exists)
             let applicationsSnapshot;
             try {
                 applicationsSnapshot = await db
@@ -440,7 +354,6 @@ class SeekerDashboard {
                     .get();
             } catch (indexError) {
                 console.log('Index not ready, using simple query:', indexError);
-                // Fallback: simple query without ordering
                 applicationsSnapshot = await db
                     .collection('applications')
                     .where('seekerId', '==', this.currentUser.uid)
@@ -451,13 +364,9 @@ class SeekerDashboard {
             this.applicationsData = [];
             applicationsSnapshot.forEach(doc => {
                 const applicationData = doc.data();
-                this.applicationsData.push({
-                    id: doc.id,
-                    ...applicationData
-                });
+                this.applicationsData.push({ id: doc.id, ...applicationData });
             });
 
-            // Sort manually if we used the fallback query
             if (this.applicationsData.length > 0 && this.applicationsData[0].appliedDate) {
                 this.applicationsData.sort((a, b) => {
                     const dateA = a.appliedDate?.toDate?.() || new Date(0);
@@ -494,19 +403,20 @@ class SeekerDashboard {
             console.log('Jobs snapshot:', jobsSnapshot.size, 'jobs found');
 
             this.jobsData = [];
-            jobsSnapshot.forEach(doc => {
+            for (const doc of jobsSnapshot.docs) {
                 const jobData = doc.data();
-                console.log('Job data:', doc.id, jobData); // Debug log
+                let employerData = null;
+                if (jobData.employerId) {
+                    employerData = await this.loadEmployerData(jobData.employerId);
+                }
                 
                 this.jobsData.push({
                     id: doc.id,
-                    ...jobData
+                    ...jobData,
+                    employerData: employerData
                 });
-            });
+            }
 
-            console.log('Processed jobs data:', this.jobsData); // Debug log
-
-            // Filter and score jobs based on user profile
             await this.calculateJobMatches();
             this.renderJobsFeed();
         } catch (error) {
@@ -514,6 +424,35 @@ class SeekerDashboard {
             this.jobsData = [];
             this.filteredJobs = [];
             this.renderJobsFeed();
+        }
+    }
+
+    async loadEmployerData(employerId) {
+        if (this.employersData.has(employerId)) {
+            return this.employersData.get(employerId);
+        }
+
+        try {
+            const db = firebase.firestore();
+            let employerDoc = await db.collection('companies').doc(employerId).get();
+            if (employerDoc.exists) {
+                const data = employerDoc.data();
+                this.employersData.set(employerId, data);
+                return data;
+            }
+            
+            employerDoc = await db.collection('users').doc(employerId).get();
+            if (employerDoc.exists) {
+                const data = employerDoc.data();
+                this.employersData.set(employerId, data);
+                return data;
+            }
+            
+            console.log('No employer data found for:', employerId);
+            return null;
+        } catch (error) {
+            console.error('Error loading employer data:', error);
+            return null;
         }
     }
 
@@ -525,34 +464,31 @@ class SeekerDashboard {
         }
 
         this.filteredJobs = this.jobsData.map(job => {
-            // Debug: Check company data
-            console.log('Processing job:', job.id, 'Company data:', {
-                company: job.company,
-                companyName: job.companyName,
-                employerName: job.employerName,
-                employer: job.employer
-            });
-
-            // Try different field names for company
             const companyName = this.getCompanyName(job);
             const companyLogo = this.getCompanyLogo(job);
-
+            const posterUrl = job.posterUrl;
             const matchScore = this.calculateMatchScore(job);
+            
             return {
                 ...job,
                 company: companyName,
                 companyLogo: companyLogo,
+                posterUrl: posterUrl,
                 matchScore: matchScore
             };
         }).filter(job => job.matchScore >= 30)
           .sort((a, b) => b.matchScore - a.matchScore);
 
-        console.log('Filtered jobs with company data:', this.filteredJobs); // Debug log
         this.renderStats();
     }
 
     getCompanyName(job) {
-        // Try different possible field names for company name
+        if (job.employerData) {
+            return job.employerData.companyName || 
+                   job.employerData.fullName || 
+                   'Company not specified';
+        }
+        
         return job.company || 
                job.companyName || 
                job.employerName || 
@@ -562,12 +498,80 @@ class SeekerDashboard {
     }
 
     getCompanyLogo(job) {
-        // Try different possible field names for company logo
+        if (job.employerData) {
+            return job.employerData.logoUrl || 
+                   job.employerData.profilePicture ||
+                   `https://via.placeholder.com/50x50/3498db/ffffff?text=${this.getCompanyName(job).charAt(0).toUpperCase()}`;
+        }
+        
         return job.companyLogo || 
                job.logo || 
                job.companyImage || 
                job.employerLogo ||
                `https://via.placeholder.com/50x50/3498db/ffffff?text=${this.getCompanyName(job).charAt(0).toUpperCase()}`;
+    }
+
+    getEmployerContactInfo(job) {
+        if (!job.employerData) {
+            return {
+                email: 'Not available',
+                phone: 'Not available',
+                website: 'Not available',
+                address: 'Not available',
+                description: 'No description available',
+                industry: 'Not specified',
+                socialMedia: {}
+            };
+        }
+
+        const employer = job.employerData;
+        return {
+            email: employer.email || employer.contactEmail || 'Not available',
+            phone: employer.phone || employer.contactPhone || 'Not available',
+            website: employer.website || employer.companyWebsite || 'Not available',
+            address: employer.address || employer.location || employer.companyAddress || 'Not available',
+            description: employer.description || employer.about || employer.companyDescription || 'No description available',
+            industry: employer.industry || employer.companyIndustry || 'Not specified',
+            socialMedia: {
+                linkedin: employer.linkedin || employer.linkedIn || '',
+                twitter: employer.twitter || '',
+                facebook: employer.facebook || '',
+                instagram: employer.instagram || ''
+            }
+        };
+    }
+
+    createSocialMediaHTML(socialMedia) {
+        let html = '';
+        if (socialMedia.linkedin) {
+            html += `<a href="${socialMedia.linkedin}" target="_blank" class="social-link linkedin">
+                        <i class="fab fa-linkedin"></i>
+                    </a>`;
+        }
+        if (socialMedia.twitter) {
+            html += `<a href="${socialMedia.twitter}" target="_blank" class="social-link twitter">
+                        <i class="fab fa-twitter"></i>
+                    </a>`;
+        }
+        if (socialMedia.facebook) {
+            html += `<a href="${socialMedia.facebook}" target="_blank" class="social-link facebook">
+                        <i class="fab fa-facebook"></i>
+                    </a>`;
+        }
+        if (socialMedia.instagram) {
+            html += `<a href="${socialMedia.instagram}" target="_blank" class="social-link instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>`;
+        }
+        
+        return html ? `
+            <div class="social-media-links">
+                <h6>Follow Us</h6>
+                <div class="social-icons">
+                    ${html}
+                </div>
+            </div>
+        ` : '';
     }
 
     calculateMatchScore(job) {
@@ -609,9 +613,9 @@ class SeekerDashboard {
             
             let experienceScore = 0;
             if (userExpLevel >= jobExpLevel) {
-                experienceScore = 100; // User meets or exceeds requirement
+                experienceScore = 100;
             } else if (userExpLevel > 0) {
-                experienceScore = (userExpLevel / jobExpLevel) * 100; // Partial match
+                experienceScore = (userExpLevel / jobExpLevel) * 100;
             }
             
             score += experienceScore * 0.2;
@@ -661,7 +665,6 @@ class SeekerDashboard {
             if (userLocation.includes(jobLocation) || jobLocation.includes(userLocation)) {
                 score += 100 * 0.1;
             } else {
-                // Partial match based on common words
                 const userWords = userLocation.split(/[,\s]+/);
                 const jobWords = jobLocation.split(/[,\s]+/);
                 const commonWords = userWords.filter(word => 
@@ -687,15 +690,11 @@ class SeekerDashboard {
             totalWeight += 0.05;
         }
 
-        // Normalize score based on actual weights used
         const normalizedScore = totalWeight > 0 ? Math.round(score / totalWeight) : 0;
-        
-        // Ensure score is between 0 and 100
         return Math.max(0, Math.min(100, normalizedScore));
     }
 
     calculateSimilarity(str1, str2) {
-        // Simple string similarity calculation
         const longer = str1.length > str2.length ? str1 : str2;
         const shorter = str1.length > str2.length ? str2 : str1;
         
@@ -705,7 +704,6 @@ class SeekerDashboard {
     }
 
     editDistance(s1, s2) {
-        // Levenshtein distance for string similarity
         s1 = s1.toLowerCase();
         s2 = s2.toLowerCase();
         
@@ -732,7 +730,6 @@ class SeekerDashboard {
     }
 
     parseSalary(salaryString) {
-        // Parse salary strings like "UGX 500,000 - 750,000" or "500k-750k"
         if (!salaryString) return null;
         
         const numbers = salaryString.match(/\d+/g);
@@ -748,7 +745,7 @@ class SeekerDashboard {
         const overlapMin = Math.max(userRange.min, jobRange.min);
         const overlapMax = Math.min(userRange.max, jobRange.max);
         
-        if (overlapMin > overlapMax) return 0; // No overlap
+        if (overlapMin > overlapMax) return 0;
         
         const overlapLength = overlapMax - overlapMin;
         const userRangeLength = userRange.max - userRange.min;
@@ -785,7 +782,6 @@ class SeekerDashboard {
             }
         }
 
-        // Update profile picture from user profile
         if (userAvatar && this.userProfile.profilePicture) {
             userAvatar.src = this.userProfile.profilePicture;
         }
@@ -804,14 +800,11 @@ class SeekerDashboard {
         if (totalMatches) totalMatches.textContent = this.filteredJobs.length;
         if (totalApplications) totalApplications.textContent = this.applicationsData.length;
         
-        // Calculate average match score
         const avgMatchScore = this.filteredJobs.length > 0 
             ? Math.round(this.filteredJobs.reduce((sum, job) => sum + job.matchScore, 0) / this.filteredJobs.length)
             : 0;
         
         if (matchScore) matchScore.textContent = `${avgMatchScore}%`;
-        
-        // Update match count
         if (matchCount) matchCount.textContent = `${this.filteredJobs.length} matches found`;
     }
 
@@ -832,12 +825,8 @@ class SeekerDashboard {
                     <h3>No matching jobs found</h3>
                     <p>We couldn't find any jobs that match your current profile. Try updating your skills or preferences.</p>
                     <div class="empty-actions">
-                        <button class="btn-primary" onclick="location.href='seeker_edit_profile.html'">
-                            Update Your Profile
-                        </button>
-                        <button class="btn-secondary" onclick="location.href='browse_jobs.html'">
-                            Browse All Jobs
-                        </button>
+                        <a href="seeker_edit_profile.html" class="btn-primary">Update Your Profile</a>
+                        <a href="browse_jobs.html" class="btn-secondary">Browse All Jobs</a>
                     </div>
                 </div>
             `;
@@ -845,6 +834,8 @@ class SeekerDashboard {
             jobsFeed.innerHTML = this.filteredJobs.map(job => {
                 const companyName = this.getCompanyName(job);
                 const companyLogo = this.getCompanyLogo(job);
+                const posterUrl = job.posterUrl;
+                const jobPosterHTML = this.createJobPosterHTML(job);
                 
                 return `
                 <div class="job-card" data-job-id="${job.id}">
@@ -858,7 +849,7 @@ class SeekerDashboard {
                             </div>
                             <div class="job-title-info">
                                 <h3>${job.title || 'No Title'}</h3>
-                                <p class="job-company">
+                                <p class="job-company" onclick="dashboard.showEmployerDetails('${job.id}')">
                                     <i class="fas fa-building"></i>
                                     ${companyName}
                                 </p>
@@ -872,6 +863,9 @@ class SeekerDashboard {
                             ${job.matchScore}% Match
                         </div>
                     </div>
+                    
+                    ${jobPosterHTML}
+                    
                     <div class="job-meta">
                         <span class="job-type">${this.getJobTypeLabel(job.jobType)}</span>
                         <span class="job-salary">${job.salary || 'Salary not specified'}</span>
@@ -896,6 +890,9 @@ class SeekerDashboard {
                         <button class="btn-save" onclick="dashboard.saveJob('${job.id}')">
                             <i class="fas fa-bookmark"></i> Save
                         </button>
+                        <button class="btn-contact-employer" onclick="dashboard.showEmployerDetails('${job.id}')">
+                            <i class="fas fa-envelope"></i> Contact
+                        </button>
                         <button class="btn-view-details" onclick="dashboard.showJobDetails('${job.id}')">
                             View Details
                         </button>
@@ -908,6 +905,87 @@ class SeekerDashboard {
         if (matchCount) {
             matchCount.textContent = `${this.filteredJobs.length} matches found`;
         }
+    }
+
+    createJobPosterHTML(job) {
+        const posterUrl = job.posterUrl;
+        
+        if (posterUrl && posterUrl.trim() !== '' && posterUrl !== 'https://via.placeholder.com/150x150?text=Job+Image') {
+            return `
+                <div class="job-poster-container" data-job-id="${job.id}" onclick="dashboard.showJobImageModal('${job.id}')">
+                    <img src="${posterUrl}" 
+                         alt="${job.title || 'Job Poster'}" 
+                         class="job-poster-image"
+                         onerror="this.onerror=null; this.parentElement.outerHTML=window.dashboard.createNoPosterHTML('${job.id}');">
+                    <div class="poster-overlay">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+            `;
+        } else {
+            return this.createNoPosterHTML(job.id);
+        }
+    }
+
+    createNoPosterHTML(jobId) {
+        return `
+            <div class="no-poster" data-job-id="${jobId}">
+                <i class="fas fa-image"></i>
+                <span>No job poster image</span>
+            </div>
+        `;
+    }
+
+    showJobImageModal(jobId) {
+        const job = this.jobsData.find(j => j.id === jobId);
+        if (!job || !job.posterUrl) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal job-image-modal';
+        modal.style.display = 'block';
+        
+        const companyName = this.getCompanyName(job);
+        const companyLogo = this.getCompanyLogo(job);
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${job.title || 'Job Poster'}</h3>
+                    <span class="modal-close">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <img src="${job.posterUrl}" 
+                         alt="${job.title || 'Job Poster'}" 
+                         style="width: 100%; display: block;"
+                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
+                </div>
+                <div class="job-image-info" style="padding: 20px; border-top: 1px solid #f1f5f9;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b;">${job.title || 'Untitled Job'}</h4>
+                    <div class="job-image-meta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: #64748b; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center;">
+                            <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16?text=LOGO'">
+                            <span>${companyName}</span>
+                        </div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> ${job.location || 'Remote'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-money-bill-wave" style="margin-right: 5px;"></i> ${job.salary || 'Salary not specified'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const closeBtn = modal.querySelector('.modal-close');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
     }
 
     renderApplications() {
@@ -992,13 +1070,13 @@ class SeekerDashboard {
         }
     }
 
-    // Event Handlers
     handleSearch(searchTerm) {
         if (!searchTerm.trim()) {
             this.filteredJobs = [...this.jobsData.map(job => ({
                 ...job,
                 company: this.getCompanyName(job),
                 companyLogo: this.getCompanyLogo(job),
+                posterUrl: job.posterUrl,
                 matchScore: this.calculateMatchScore(job)
             })).filter(job => job.matchScore >= 30)];
         } else {
@@ -1008,6 +1086,7 @@ class SeekerDashboard {
                     ...job,
                     company: this.getCompanyName(job),
                     companyLogo: this.getCompanyLogo(job),
+                    posterUrl: job.posterUrl,
                     matchScore: this.calculateMatchScore(job)
                 }))
                 .filter(job => 
@@ -1029,6 +1108,7 @@ class SeekerDashboard {
                 ...job,
                 company: this.getCompanyName(job),
                 companyLogo: this.getCompanyLogo(job),
+                posterUrl: job.posterUrl,
                 matchScore: this.calculateMatchScore(job)
             })).filter(job => job.matchScore >= 30)];
         } else {
@@ -1037,6 +1117,7 @@ class SeekerDashboard {
                     ...job,
                     company: this.getCompanyName(job),
                     companyLogo: this.getCompanyLogo(job),
+                    posterUrl: job.posterUrl,
                     matchScore: this.calculateMatchScore(job)
                 }))
                 .filter(job => job.matchScore >= 30 && job.jobType === filterType);
@@ -1062,7 +1143,6 @@ class SeekerDashboard {
         }, 1000);
     }
 
-    // Job Details Modal
     showJobDetails(jobId) {
         const job = this.jobsData.find(j => j.id === jobId);
         if (!job) return;
@@ -1086,7 +1166,9 @@ class SeekerDashboard {
                     </div>
                     <div class="job-header-info">
                         <h4>${job.title || 'No Title'}</h4>
-                        <p class="company-name-large">${companyName}</p>
+                        <p class="company-name-large" onclick="dashboard.showEmployerDetails('${job.id}')">
+                            ${companyName}
+                        </p>
                     </div>
                 </div>
                 
@@ -1152,6 +1234,9 @@ class SeekerDashboard {
                     <button class="btn btn-outline" onclick="dashboard.saveJob('${job.id}')">
                         <i class="fas fa-bookmark"></i> Save Job
                     </button>
+                    <button class="btn btn-outline" onclick="dashboard.showEmployerDetails('${job.id}')">
+                        <i class="fas fa-building"></i> View Employer
+                    </button>
                 </div>
             `;
         }
@@ -1164,7 +1249,122 @@ class SeekerDashboard {
         if (jobDetailsModal) jobDetailsModal.classList.remove('show');
     }
 
-    // Application Modal
+    // EMPLOYER DETAILS MODAL - FIXED AND WORKING
+    showEmployerDetails(jobId) {
+        const job = this.jobsData.find(j => j.id === jobId);
+        if (!job) {
+            console.error('Job not found:', jobId);
+            return;
+        }
+
+        const employerModal = document.getElementById('employerModal');
+        const employerContent = document.getElementById('employerContent');
+        const employerTitle = document.getElementById('employerTitle');
+
+        const companyName = this.getCompanyName(job);
+        const companyLogo = this.getCompanyLogo(job);
+        const contactInfo = this.getEmployerContactInfo(job);
+
+        console.log('Employer data for job:', jobId, job.employerData);
+        console.log('Contact info:', contactInfo);
+
+        if (employerTitle) employerTitle.textContent = companyName;
+        
+        if (employerContent) {
+            const socialMediaHTML = this.createSocialMediaHTML(contactInfo.socialMedia);
+            
+            employerContent.innerHTML = `
+                <div class="employer-header">
+                    <div class="employer-logo-large">
+                        <img src="${companyLogo}" 
+                             alt="${companyName} Logo"
+                             onerror="this.src='https://via.placeholder.com/80x80/3498db/ffffff?text=${companyName.charAt(0).toUpperCase()}'">
+                    </div>
+                    <div class="employer-header-info">
+                        <h4>${companyName}</h4>
+                        <p class="employer-industry">${contactInfo.industry}</p>
+                        <p class="employer-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            ${contactInfo.address}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="employer-contact-info">
+                    <h5>Contact Information</h5>
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span class="contact-label">Email:</span>
+                        <span class="contact-value">
+                            ${contactInfo.email !== 'Not available' ? 
+                                `<a href="mailto:${contactInfo.email}">${contactInfo.email}</a>` : 
+                                'Not available'}
+                        </span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span class="contact-label">Phone:</span>
+                        <span class="contact-value">
+                            ${contactInfo.phone !== 'Not available' ? 
+                                `<a href="tel:${contactInfo.phone}">${contactInfo.phone}</a>` : 
+                                'Not available'}
+                        </span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-globe"></i>
+                        <span class="contact-label">Website:</span>
+                        <span class="contact-value">
+                            ${contactInfo.website !== 'Not available' ? 
+                                `<a href="${contactInfo.website}" target="_blank">${contactInfo.website}</a>` : 
+                                'Not available'}
+                        </span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="contact-label">Address:</span>
+                        <span class="contact-value">${contactInfo.address}</span>
+                    </div>
+                </div>
+
+                <div class="employer-description">
+                    <h5>About ${companyName}</h5>
+                    <p>${contactInfo.description}</p>
+                </div>
+
+                ${socialMediaHTML}
+
+                <div class="employer-actions">
+                    <button class="btn btn-primary" onclick="dashboard.showApplicationModal('${job.id}')">
+                        Apply to Job
+                    </button>
+                    ${contactInfo.email !== 'Not available' ? `
+                    <a href="mailto:${contactInfo.email}?subject=Regarding ${job.title || 'Job Application'}" class="btn btn-outline">
+                        <i class="fas fa-envelope"></i> Send Email
+                    </a>
+                    ` : ''}
+                    ${contactInfo.phone !== 'Not available' ? `
+                    <a href="tel:${contactInfo.phone}" class="btn btn-outline">
+                        <i class="fas fa-phone"></i> Call Now
+                    </a>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        if (employerModal) {
+            employerModal.classList.add('show');
+            employerModal.style.display = 'flex';
+        }
+    }
+
+    hideEmployerModal() {
+        const employerModal = document.getElementById('employerModal');
+        if (employerModal) {
+            employerModal.classList.remove('show');
+            employerModal.style.display = 'none';
+        }
+    }
+
     showApplicationModal(jobId) {
         if (!this.currentUser) {
             this.showToast('Please log in to apply for jobs', 'error');
@@ -1217,7 +1417,6 @@ class SeekerDashboard {
             let resumeUrl = null;
             let resumeFileName = null;
 
-            // Upload resume to Firebase Storage if provided
             if (this.selectedResumeFile) {
                 const storageRef = firebase.storage().ref();
                 const resumeRef = storageRef.child(`resumes/${this.currentUser.uid}/${Date.now()}_${this.selectedResumeFile.name}`);
@@ -1226,7 +1425,6 @@ class SeekerDashboard {
                 resumeFileName = this.selectedResumeFile.name;
             }
 
-            // Prepare application data with fallback values
             const applicationData = {
                 seekerId: this.currentUser.uid,
                 jobId: this.currentJobApplication,
@@ -1236,23 +1434,20 @@ class SeekerDashboard {
                 status: 'pending',
                 coverLetter: message || '',
                 hasResume: !!resumeUrl,
-                profileUsed: !resumeUrl // Indicate if profile was used instead of resume
+                profileUsed: !resumeUrl
             };
 
-            // Only add resume fields if resume was uploaded
             if (resumeUrl) {
                 applicationData.resumeUrl = resumeUrl;
                 applicationData.resumeFileName = resumeFileName;
             }
 
-            // Save application to Firebase
             const db = firebase.firestore();
             await db.collection('applications').add(applicationData);
 
             this.showToast('Application submitted successfully!', 'success');
             this.hideApplicationModal();
             
-            // Reload applications
             await this.loadApplications();
         } catch (error) {
             console.error('Error submitting application:', error);
@@ -1297,7 +1492,6 @@ class SeekerDashboard {
         }
     }
 
-    // Utility Methods
     getEducationLabel(education) {
         const educationLabels = {
             'high_school': 'High School',
@@ -1343,6 +1537,24 @@ class SeekerDashboard {
             'rejected': 'Not Selected'
         };
         return statusLabels[status] || 'Pending';
+    }
+
+    formatDate(date) {
+        if (!date) return 'Recently';
+        
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
     }
 
     showJobsLoading() {
