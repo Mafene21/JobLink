@@ -1,657 +1,603 @@
-// Firebase configuration
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged,
-  signOut 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  where, 
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  orderBy,
-  Timestamp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
-  authDomain: "joblink-babb6.firebaseapp.com",
-  projectId: "joblink-babb6",
-  storageBucket: "joblink-babb6.firebasestorage.app",
-  messagingSenderId: "442169381701",
-  appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
-  measurementId: "G-Z0737HMGCQ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Simple Mobile Menu Functionality
-function initMobileMenu() {
-  const hamburger = document.getElementById('hamburgerMenu');
-  const navLinks = document.getElementById('navLinks');
-
-  console.log('Mobile menu elements:', { hamburger, navLinks });
-
-  if (hamburger && navLinks) {
-    hamburger.addEventListener('click', function(e) {
-      e.stopPropagation();
-      console.log('Hamburger clicked!');
-      navLinks.classList.toggle('active');
-      hamburger.classList.toggle('active');
-      
-      // Toggle body scroll
-      if (navLinks.classList.contains('active')) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
-    });
-
-    // Close menu when clicking on links
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', function() {
-        console.log('Nav link clicked');
-        navLinks.classList.remove('active');
-        hamburger.classList.remove('active');
-        document.body.style.overflow = '';
-      });
-    });
-
-    // Close menu when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
-        navLinks.classList.remove('active');
-        hamburger.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    });
-
-    // Close menu on escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        navLinks.classList.remove('active');
-        hamburger.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    });
-
-    console.log('Mobile menu initialized successfully');
-  } else {
-    console.error('Mobile menu elements not found!');
-  }
-}
-
-class AppliedJobs {
+// Browse Jobs JavaScript with Firebase Integration
+class BrowseJobs {
     constructor() {
-        this.currentUser = null;
-        this.userData = null;
-        this.applications = [];
-        this.filteredApplications = [];
-        this.currentView = 'detailed';
+        this.jobs = [];
+        this.filteredJobs = [];
         this.currentPage = 1;
-        this.applicationsPerPage = 10;
+        this.jobsPerPage = 10;
         this.filters = {
             search: '',
-            status: 'all',
-            date: 'all',
-            sortBy: 'newest'
+            jobType: '',
+            location: '',
+            experience: '',
+            salary: ''
         };
-        this.currentApplication = null;
+        this.sortBy = 'newest';
+        this.firebaseInitialized = false;
         this.init();
     }
 
     async init() {
-        // Initialize mobile menu first
-        initMobileMenu();
-        
-        await this.checkAuthState();
+        await this.initializeFirebase();
         this.bindEvents();
+        await this.loadJobs();
     }
 
-    async checkAuthState() {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                this.currentUser = user;
-                console.log('User authenticated:', user.uid);
-                await this.loadUserData();
-                await this.loadAllApplications();
-                this.updateStats();
-            } else {
-                window.location.href = 'login.html';
+    initializeFirebase() {
+        // Firebase configuration (same as your dashboard)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
+            authDomain: "joblink-babb6.firebaseapp.com",
+            projectId: "joblink-babb6",
+            storageBucket: "joblink-babb6.firebasestorage.app",
+            messagingSenderId: "442169381701",
+            appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
+            measurementId: "G-Z0737HMGCQ"
+        };
+
+        try {
+            // Check if Firebase is already initialized
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            this.firebaseInitialized = true;
+            console.log("Firebase initialized successfully for Browse Jobs");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            this.firebaseInitialized = false;
+            this.showError("Failed to initialize Firebase. Please refresh the page.");
+        }
+    }
+
+    bindEvents() {
+        // Search functionality
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            this.handleSearch();
+        });
+
+        document.getElementById('jobSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.handleSearch();
             }
         });
-    }
 
-    async loadUserData() {
-        try {
-            const userDoc = await getDoc(doc(db, 'seekers', this.currentUser.uid));
-            if (userDoc.exists()) {
-                this.userData = userDoc.data();
-                console.log('User data loaded:', this.userData);
-                this.updateUserAvatar();
-            } else {
-                console.log('No user data found for seeker:', this.currentUser.uid);
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error);
-        }
-    }
-
-    updateUserAvatar() {
-        const userAvatarNav = document.getElementById('userAvatarNav');
-        if (this.userData?.profilePicture) {
-            userAvatarNav.src = this.userData.profilePicture;
-        } else {
-            userAvatarNav.src = 'https://via.placeholder.com/32x32?text=U';
-        }
-    }
-
-    async loadAllApplications() {
-        const container = document.getElementById('applicationsContainer');
-        
-        try {
-            container.innerHTML = `
-                <div class="loading-state">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Loading your applications...</p>
-                </div>
-            `;
-
-            this.applications = [];
-            
-            // Try multiple methods to find applications
-            await this.tryApplicationsCollection();
-            
-            if (this.applications.length === 0) {
-                await this.tryJobsCollection();
-            }
-            
-            if (this.applications.length === 0) {
-                await this.tryAllCollections();
-            }
-            
-            if (this.applications.length === 0) {
-                this.showNoApplicationsState();
-                return;
-            }
-            
+        // Filter changes
+        document.getElementById('jobTypeFilter').addEventListener('change', (e) => {
+            this.filters.jobType = e.target.value;
             this.applyFilters();
-            this.renderApplications();
-            this.updateStats();
-            
-        } catch (error) {
-            console.error('Error loading applications:', error);
-            this.showErrorState(container, error);
-        }
-    }
-
-    async tryApplicationsCollection() {
-        try {
-            const applicationsQuery = query(
-                collection(db, 'applications'),
-                where('seekerId', '==', this.currentUser.uid)
-            );
-            const snapshot = await getDocs(applicationsQuery);
-            
-            for (const doc of snapshot.docs) {
-                const appData = doc.data();
-                const application = await this.createApplicationFromData(doc.id, appData);
-                if (application) {
-                    this.applications.push(application);
-                }
-            }
-        } catch (error) {
-            console.error('Error querying applications collection:', error);
-        }
-    }
-
-    async tryJobsCollection() {
-        try {
-            const jobsQuery = query(
-                collection(db, 'jobs'),
-                where('applicants', 'array-contains', this.currentUser.uid)
-            );
-            const snapshot = await getDocs(jobsQuery);
-            
-            for (const doc of snapshot.docs) {
-                const jobData = doc.data();
-                const application = await this.createApplicationFromJob(doc.id, jobData);
-                if (application) {
-                    this.applications.push(application);
-                }
-            }
-        } catch (error) {
-            console.error('Error querying jobs collection:', error);
-        }
-    }
-
-    async tryAllCollections() {
-        // Check applications collection (all documents)
-        try {
-            const applicationsSnapshot = await getDocs(collection(db, 'applications'));
-            
-            for (const doc of applicationsSnapshot.docs) {
-                const appData = doc.data();
-                if (appData.seekerId === this.currentUser.uid || 
-                    appData.userId === this.currentUser.uid ||
-                    appData.applicantId === this.currentUser.uid) {
-                    
-                    const application = await this.createApplicationFromData(doc.id, appData);
-                    if (application) {
-                        this.applications.push(application);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error scanning applications:', error);
-        }
-        
-        // Check jobs collection (all documents)
-        try {
-            const jobsSnapshot = await getDocs(collection(db, 'jobs'));
-            
-            for (const doc of jobsSnapshot.docs) {
-                const jobData = doc.data();
-                if (jobData.applicants && Array.isArray(jobData.applicants) && 
-                    jobData.applicants.includes(this.currentUser.uid)) {
-                    
-                    const application = await this.createApplicationFromJob(doc.id, jobData);
-                    if (application) {
-                        this.applications.push(application);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error scanning jobs:', error);
-        }
-    }
-
-    async createApplicationFromData(appId, appData) {
-        const application = {
-            id: appId,
-            ...appData,
-            appliedAt: appData.appliedDate?.toDate ? appData.appliedDate.toDate() : 
-                      appData.appliedAt?.toDate ? appData.appliedAt.toDate() : 
-                      new Date(appData.appliedDate || appData.appliedAt || new Date()),
-            status: appData.status || 'pending',
-            coverLetter: appData.coverLetter || '',
-            resumeUrl: appData.resumeUrl || null,
-            resumeFileName: appData.resumeFileName || null
-        };
-
-        if (application.jobId) {
-            await this.enrichApplicationWithJobData(application);
-        } else {
-            application.job = {
-                title: application.jobTitle || 'Unknown Position',
-                company: application.companyName || 'Unknown Company',
-                location: application.location || 'Not specified',
-                type: application.jobType || 'Not specified',
-                salary: application.salary || 'Not specified',
-                description: application.jobDescription || '',
-                requirements: []
-            };
-            
-            application.company = {
-                companyName: application.companyName || 'Unknown Company',
-                logoUrl: application.companyLogo || null
-            };
-        }
-
-        return application;
-    }
-
-    async createApplicationFromJob(jobId, jobData) {
-        const application = {
-            id: jobId,
-            jobId: jobId,
-            job: {
-                title: jobData.jobTitle || jobData.title || 'Unknown Position',
-                company: jobData.companyName || jobData.company || 'Unknown Company',
-                location: jobData.location || 'Not specified',
-                type: jobData.jobType || jobData.type || 'Not specified',
-                salary: jobData.salary || 'Not specified',
-                description: jobData.jobDescription || jobData.description || '',
-                requirements: jobData.requirements || []
-            },
-            company: {
-                companyName: jobData.companyName || jobData.company || 'Unknown Company',
-                logoUrl: this.findLogoUrl(jobData)
-            },
-            status: 'pending',
-            appliedAt: new Date(),
-            coverLetter: '',
-            resumeUrl: null,
-            resumeFileName: null
-        };
-
-        return application;
-    }
-
-    async enrichApplicationWithJobData(application) {
-        try {
-            const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
-            if (jobDoc.exists()) {
-                const jobData = jobDoc.data();
-                
-                application.job = {
-                    title: jobData.jobTitle || jobData.title || 'Unknown Position',
-                    company: jobData.companyName || jobData.company || 'Unknown Company',
-                    location: jobData.location || 'Not specified',
-                    type: jobData.jobType || jobData.type || 'Not specified',
-                    salary: jobData.salary || 'Not specified',
-                    description: jobData.jobDescription || jobData.description || '',
-                    requirements: jobData.requirements || []
-                };
-                
-                application.company = {
-                    companyName: jobData.companyName || jobData.company || 'Unknown Company',
-                    logoUrl: this.findLogoUrl(jobData)
-                };
-            }
-        } catch (error) {
-            console.error('Error enriching application with job data:', error);
-        }
-    }
-
-    findLogoUrl(data) {
-        if (!data) return null;
-        
-        const possibleLogoFields = [
-            'companyLogo', 'logoUrl', 'companyLogoUrl', 'logo', 
-            'companyImage', 'imageUrl', 'companyLogoURL', 'company_logo',
-            'logoURL', 'companyLogoImage', 'companyLogoUrl', 'image',
-            'companyLogoImageUrl', 'brandLogo', 'companyBrandLogo'
-        ];
-        
-        for (const field of possibleLogoFields) {
-            if (data[field]) {
-                return data[field];
-            }
-        }
-        
-        return null;
-    }
-
-    showNoApplicationsState() {
-        const container = document.getElementById('applicationsContainer');
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-file-alt"></i>
-                <h3>No Job Applications Found</h3>
-                <p>You haven't applied to any jobs yet. Start your job search and apply to see your applications here!</p>
-                <div class="action-buttons" style="justify-content: center;">
-                    <button class="btn btn-primary" onclick="window.location.href='browse_jobs.html'">
-                        <i class="fas fa-search"></i>
-                        Browse Jobs
-                    </button>
-                    <button class="btn btn-secondary" onclick="appliedJobs.loadAllApplications()">
-                        <i class="fas fa-refresh"></i>
-                        Refresh
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    applyFilters() {
-        this.filteredApplications = this.applications.filter(application => {
-            const searchTerm = this.filters.search.toLowerCase();
-            const matchesSearch = !searchTerm || 
-                application.job?.title?.toLowerCase().includes(searchTerm) ||
-                application.company?.companyName?.toLowerCase().includes(searchTerm) ||
-                application.job?.location?.toLowerCase().includes(searchTerm);
-
-            const matchesStatus = this.filters.status === 'all' || application.status === this.filters.status;
-
-            const matchesDate = this.matchesDateFilter(application.appliedAt, this.filters.date);
-
-            return matchesSearch && matchesStatus && matchesDate;
         });
 
-        this.sortApplications();
+        document.getElementById('locationFilter').addEventListener('change', (e) => {
+            this.filters.location = e.target.value;
+            this.applyFilters();
+        });
+
+        document.getElementById('experienceFilter').addEventListener('change', (e) => {
+            this.filters.experience = e.target.value;
+            this.applyFilters();
+        });
+
+        document.getElementById('salaryFilter').addEventListener('change', (e) => {
+            this.filters.salary = e.target.value;
+            this.applyFilters();
+        });
+
+        // Reset filters
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            this.resetFilters();
+        });
+
+        // Sort options
+        document.getElementById('sortBy').addEventListener('change', (e) => {
+            this.sortBy = e.target.value;
+            this.sortJobs();
+        });
+
+        // Empty state actions
+        document.getElementById('refreshJobs').addEventListener('click', () => {
+            this.refreshJobs();
+        });
+
+        document.getElementById('setupAlerts').addEventListener('click', () => {
+            this.showAlertsModal();
+        });
+
+        // Load more jobs
+        document.getElementById('loadMoreJobs').addEventListener('click', () => {
+            this.loadMoreJobs();
+        });
+
+        // Alert modal
+        document.getElementById('closeAlertsModal').addEventListener('click', () => {
+            this.hideAlertsModal();
+        });
+
+        document.getElementById('cancelAlert').addEventListener('click', () => {
+            this.hideAlertsModal();
+        });
+
+        document.getElementById('saveAlert').addEventListener('click', () => {
+            this.saveJobAlert();
+        });
+
+        // Job modal
+        document.getElementById('closeJobModal').addEventListener('click', () => {
+            this.hideJobModal();
+        });
+
+        document.getElementById('saveJobBtn').addEventListener('click', () => {
+            this.saveJob();
+        });
+
+        document.getElementById('applyJobBtn').addEventListener('click', () => {
+            this.applyForJob();
+        });
+
+        // Close modals on outside click
+        document.getElementById('alertsModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('alertsModal')) {
+                this.hideAlertsModal();
+            }
+        });
+
+        document.getElementById('jobModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('jobModal')) {
+                this.hideJobModal();
+            }
+        });
     }
 
-    matchesDateFilter(appliedDate, filter) {
-        if (filter === 'all') return true;
-        if (!appliedDate) return true;
-        
-        const now = new Date();
-        switch (filter) {
-            case 'today': 
-                return appliedDate.toDateString() === now.toDateString();
-            case 'week': 
-                const weekAgo = new Date(now);
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                return appliedDate >= weekAgo;
-            case 'month': 
-                const monthAgo = new Date(now);
-                monthAgo.setDate(monthAgo.getDate() - 30);
-                return appliedDate >= monthAgo;
-            case 'older': 
-                const monthAgoOlder = new Date(now);
-                monthAgoOlder.setDate(monthAgoOlder.getDate() - 30);
-                return appliedDate < monthAgoOlder;
-            default: return true;
-        }
-    }
-
-    sortApplications() {
-        switch (this.filters.sortBy) {
-            case 'newest':
-                this.filteredApplications.sort((a, b) => (b.appliedAt || new Date(0)) - (a.appliedAt || new Date(0)));
-                break;
-            case 'oldest':
-                this.filteredApplications.sort((a, b) => (a.appliedAt || new Date(0)) - (b.appliedAt || new Date(0)));
-                break;
-            case 'company':
-                this.filteredApplications.sort((a, b) => 
-                    (a.company?.companyName || '').localeCompare(b.company?.companyName || '')
-                );
-                break;
-            case 'deadline':
-                this.filteredApplications.sort((a, b) => (b.appliedAt || new Date(0)) - (a.appliedAt || new Date(0)));
-                break;
-        }
-    }
-
-    renderApplications() {
-        const container = document.getElementById('applicationsContainer');
-        
-        if (this.filteredApplications.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-file-alt"></i>
-                    <h3>No Applications Match Your Filters</h3>
-                    <p>Try adjusting your search criteria or clear the filters to see all applications.</p>
-                    <div class="action-buttons" style="justify-content: center;">
-                        <button class="btn btn-primary" onclick="appliedJobs.clearFilters()">
-                            Clear Filters
-                        </button>
-                    </div>
-                </div>
-            `;
+    async loadJobs() {
+        if (!this.firebaseInitialized) {
+            this.showError("Firebase not initialized. Please refresh the page.");
+            this.showEmptyState();
             return;
         }
 
-        const startIndex = (this.currentPage - 1) * this.applicationsPerPage;
-        const endIndex = startIndex + this.applicationsPerPage;
-        const paginatedApplications = this.filteredApplications.slice(startIndex, endIndex);
+        try {
+            this.showLoadingState();
+            
+            const db = firebase.firestore();
+            const jobsSnapshot = await db
+                .collection('jobs')
+                .where('status', '==', 'active')
+                .get();
 
-        let applicationsHTML = '';
-        
-        if (this.currentView === 'detailed') {
-            applicationsHTML = '<div class="applications-detailed">';
-            paginatedApplications.forEach(application => {
-                applicationsHTML += this.createApplicationCard(application);
-            });
-            applicationsHTML += '</div>';
-        } else {
-            applicationsHTML = '<div class="applications-compact">';
-            paginatedApplications.forEach(application => {
-                applicationsHTML += this.createApplicationCard(application, true);
-            });
-            applicationsHTML += '</div>';
+            console.log('Loaded jobs from Firebase:', jobsSnapshot.size);
+
+            this.jobs = [];
+            for (const doc of jobsSnapshot.docs) {
+                const jobData = doc.data();
+                
+                // Load employer data for each job
+                let employerData = null;
+                if (jobData.employerId) {
+                    employerData = await this.loadEmployerData(jobData.employerId);
+                }
+                
+                this.jobs.push({
+                    id: doc.id,
+                    ...jobData,
+                    employerData: employerData,
+                    company: this.getCompanyName(jobData, employerData),
+                    companyLogo: this.getCompanyLogo(jobData, employerData),
+                    postedDate: jobData.createdAt ? this.formatFirebaseDate(jobData.createdAt) : 'Recently',
+                    formattedSalary: this.formatSalary(jobData.salary)
+                });
+            }
+
+            console.log('Processed jobs with employer data:', this.jobs);
+
+            if (this.jobs.length === 0) {
+                this.showEmptyState();
+            } else {
+                this.filteredJobs = [...this.jobs];
+                this.sortJobs();
+                this.renderJobs();
+            }
+            
+        } catch (error) {
+            console.error('Error loading jobs from Firebase:', error);
+            this.showToast('Error loading jobs. Please try again.', 'error');
+            this.showEmptyState();
         }
-
-        container.innerHTML = applicationsHTML;
-        this.bindApplicationCardEvents();
-        this.renderPagination();
     }
 
-    createApplicationCard(application, isCompact = false) {
-        const job = application.job || {};
-        const company = application.company || {};
-        const statusClass = `status-${application.status || 'pending'}`;
-        const cardClass = `application-card ${application.status || 'pending'}`;
+    async loadEmployerData(employerId) {
+        try {
+            const db = firebase.firestore();
+            
+            // Try companies collection first
+            let employerDoc = await db.collection('companies').doc(employerId).get();
+            if (employerDoc.exists) {
+                return employerDoc.data();
+            }
+            
+            // Fallback to users collection
+            employerDoc = await db.collection('users').doc(employerId).get();
+            if (employerDoc.exists) {
+                return employerDoc.data();
+            }
+            
+            console.log('No employer data found for:', employerId);
+            return null;
+        } catch (error) {
+            console.error('Error loading employer data:', error);
+            return null;
+        }
+    }
+
+    getCompanyName(jobData, employerData) {
+        if (employerData) {
+            return employerData.companyName || 
+                   employerData.fullName || 
+                   'Company not specified';
+        }
         
-        const appliedDate = application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently';
+        return jobData.company || 
+               jobData.companyName || 
+               jobData.employerName || 
+               jobData.employer || 
+               jobData.postedByCompany ||
+               'Company not specified';
+    }
 
-        const companyName = company.companyName || job.company || 'Unknown Company';
-        const logoUrl = company.logoUrl;
-        const jobTitle = job.title || 'Unknown Position';
-        const jobLocation = job.location || 'Remote';
+    getCompanyLogo(jobData, employerData) {
+        if (employerData) {
+            return employerData.logoUrl || 
+                   employerData.profilePicture ||
+                   `https://via.placeholder.com/50x50/3498db/ffffff?text=${this.getCompanyName(jobData, employerData).charAt(0).toUpperCase()}`;
+        }
+        
+        return jobData.companyLogo || 
+               jobData.logo || 
+               jobData.companyImage || 
+               jobData.employerLogo ||
+               `https://via.placeholder.com/50x50/3498db/ffffff?text=${this.getCompanyName(jobData, employerData).charAt(0).toUpperCase()}`;
+    }
 
-        const logoHTML = logoUrl ? 
-            `<img src="${logoUrl}" alt="${companyName}" class="company-logo">` :
-            `<div class="company-logo no-logo" title="${companyName}">
-                <i class="fas fa-building"></i>
-             </div>`;
+    formatFirebaseDate(timestamp) {
+        if (!timestamp) return 'Recently';
+        
+        let date;
+        if (timestamp.toDate) {
+            date = timestamp.toDate();
+        } else if (timestamp.seconds) {
+            date = new Date(timestamp.seconds * 1000);
+        } else {
+            date = new Date(timestamp);
+        }
+        
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
 
-        if (isCompact) {
-            return `
-                <div class="${cardClass}" data-application-id="${application.id}">
-                    <div class="application-main">
-                        ${logoHTML}
-                        <div class="application-info">
-                            <div class="job-title">${jobTitle}</div>
-                            <div class="company-name">${companyName}</div>
-                            <div class="application-meta">
-                                <div class="application-meta-item">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    ${jobLocation}
-                                </div>
-                                <div class="application-meta-item">
-                                    <i class="fas fa-clock"></i>
-                                    ${appliedDate}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="application-status">
-                        <span class="status-badge ${statusClass}">${this.formatStatus(application.status)}</span>
-                    </div>
-                    <div class="application-actions">
-                        <button class="btn btn-sm btn-outline view-application" data-application-id="${application.id}">
-                            <i class="fas fa-eye"></i>
-                            View
-                        </button>
-                        ${application.status !== 'withdrawn' && application.status !== 'rejected' ? `
-                        <button class="btn btn-sm btn-danger withdraw-application" data-application-id="${application.id}">
-                            <i class="fas fa-ban"></i>
-                            Withdraw
-                        </button>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
+    formatSalary(salaryString) {
+        if (!salaryString) return 'Salary not specified';
+        
+        // Format salary for display
+        if (salaryString.includes('UGX')) {
+            return salaryString;
+        }
+        
+        // Add UGX prefix if not present
+        return `UGX ${salaryString}`;
+    }
+
+    handleSearch() {
+        const searchTerm = document.getElementById('jobSearch').value.trim();
+        this.filters.search = searchTerm.toLowerCase();
+        
+        if (searchTerm) {
+            this.showLoadingState();
+            // Small delay for better UX
+            setTimeout(() => {
+                this.applyFilters();
+            }, 300);
+        } else {
+            this.applyFilters();
+        }
+    }
+
+    applyFilters() {
+        this.filteredJobs = this.jobs.filter(job => {
+            // Search filter
+            if (this.filters.search) {
+                const searchTerm = this.filters.search.toLowerCase();
+                const matchesSearch = 
+                    job.title?.toLowerCase().includes(searchTerm) ||
+                    job.company?.toLowerCase().includes(searchTerm) ||
+                    job.description?.toLowerCase().includes(searchTerm) ||
+                    (job.requiredSkills && job.requiredSkills.some(skill => 
+                        skill.toLowerCase().includes(searchTerm)));
+                
+                if (!matchesSearch) return false;
+            }
+
+            // Job type filter
+            if (this.filters.jobType && job.jobType !== this.filters.jobType) {
+                return false;
+            }
+
+            // Location filter
+            if (this.filters.location) {
+                if (this.filters.location === 'remote') {
+                    if (!job.location?.toLowerCase().includes('remote')) {
+                        return false;
+                    }
+                } else if (job.location?.toLowerCase() !== this.filters.location.toLowerCase()) {
+                    return false;
+                }
+            }
+
+            // Experience filter
+            if (this.filters.experience) {
+                const experienceMap = {
+                    'entry': ['none', '0-1'],
+                    'mid': ['1-3', '3-5'],
+                    'senior': ['5-10', '10+']
+                };
+                
+                const allowedLevels = experienceMap[this.filters.experience] || [];
+                if (!allowedLevels.includes(job.experienceLevel)) {
+                    return false;
+                }
+            }
+
+            // Salary filter
+            if (this.filters.salary) {
+                const jobSalary = this.parseSalary(job.salary);
+                if (jobSalary === 0) return false; // Skip jobs with no salary info
+
+                switch (this.filters.salary) {
+                    case '0-500k':
+                        if (jobSalary > 500000) return false;
+                        break;
+                    case '500k-1M':
+                        if (jobSalary <= 500000 || jobSalary > 1000000) return false;
+                        break;
+                    case '1M-2M':
+                        if (jobSalary <= 1000000 || jobSalary > 2000000) return false;
+                        break;
+                    case '2M+':
+                        if (jobSalary <= 2000000) return false;
+                        break;
+                }
+            }
+
+            return true;
+        });
+
+        this.currentPage = 1; // Reset to first page when filters change
+        this.sortJobs();
+    }
+
+    sortJobs() {
+        if (this.filteredJobs.length === 0) {
+            this.showEmptyState();
+            return;
         }
 
-        return `
-            <div class="${cardClass}" data-application-id="${application.id}">
-                <div class="application-header">
-                    <div class="application-main">
-                        ${logoHTML}
-                        <div class="application-basic-info">
-                            <div class="job-title">${jobTitle}</div>
-                            <div class="company-name">${companyName}</div>
-                            <div class="application-meta">
-                                <div class="application-meta-item">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    ${jobLocation}
-                                </div>
-                                <div class="application-meta-item">
-                                    <i class="fas fa-clock"></i>
-                                    ${appliedDate}
-                                </div>
-                                <div class="application-meta-item">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    Status: ${this.formatStatus(application.status)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="application-status">
-                        <span class="status-badge ${statusClass}">${this.formatStatus(application.status)}</span>
-                    </div>
-                </div>
-                
-                <div class="application-details">
-                    <div class="detail-item">
-                        <span class="detail-label">Application ID</span>
-                        <span class="detail-value">${application.id.substring(0, 8)}...</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Job Type</span>
-                        <span class="detail-value">${this.formatJobType(job.type)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Salary</span>
-                        <span class="detail-value">${job.salary || 'Not specified'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Applied Date</span>
-                        <span class="detail-value">${application.appliedAt ? application.appliedAt.toLocaleDateString() : 'Not specified'}</span>
-                    </div>
-                </div>
+        switch (this.sortBy) {
+            case 'newest':
+                this.filteredJobs.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+                    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
+                break;
+            case 'salary-high':
+                this.filteredJobs.sort((a, b) => this.parseSalary(b.salary) - this.parseSalary(a.salary));
+                break;
+            case 'salary-low':
+                this.filteredJobs.sort((a, b) => this.parseSalary(a.salary) - this.parseSalary(b.salary));
+                break;
+            case 'relevant':
+                // For now, sort by newest as relevance metric
+                this.filteredJobs.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+                    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
+                break;
+        }
 
-                <div class="application-actions">
-                    <button class="btn btn-sm btn-outline view-application" data-application-id="${application.id}">
-                        <i class="fas fa-eye"></i>
-                        View Details
-                    </button>
-                    <button class="btn btn-sm btn-primary view-timeline" data-application-id="${application.id}">
-                        <i class="fas fa-history"></i>
-                        Timeline
-                    </button>
-                    <button class="btn btn-sm btn-secondary contact-employer" data-application-id="${application.id}">
-                        <i class="fas fa-envelope"></i>
-                        Contact
-                    </button>
-                    ${application.status !== 'withdrawn' && application.status !== 'rejected' ? `
-                    <button class="btn btn-sm btn-danger withdraw-application" data-application-id="${application.id}">
-                        <i class="fas fa-ban"></i>
-                        Withdraw
-                    </button>
-                    ` : ''}
+        this.renderJobs();
+    }
+
+    parseSalary(salaryString) {
+        if (!salaryString) return 0;
+        
+        // Extract numbers from salary string
+        const numbers = salaryString.match(/\d+/g);
+        if (!numbers) return 0;
+        
+        // Take the first number and handle 'k' notation
+        let salary = parseInt(numbers[0]);
+        if (salaryString.toLowerCase().includes('k')) {
+            salary *= 1000;
+        }
+        
+        return salary;
+    }
+
+    resetFilters() {
+        document.getElementById('jobSearch').value = '';
+        document.getElementById('jobTypeFilter').value = '';
+        document.getElementById('locationFilter').value = '';
+        document.getElementById('experienceFilter').value = '';
+        document.getElementById('salaryFilter').value = '';
+        document.getElementById('sortBy').value = 'newest';
+
+        this.filters = {
+            search: '',
+            jobType: '',
+            location: '',
+            experience: '',
+            salary: ''
+        };
+        this.sortBy = 'newest';
+
+        this.filteredJobs = [...this.jobs];
+        this.sortJobs();
+        this.showToast('Filters reset successfully', 'info');
+    }
+
+    async refreshJobs() {
+        this.showLoadingState();
+        await this.loadJobs();
+        this.showToast('Jobs refreshed successfully!', 'success');
+    }
+
+    loadMoreJobs() {
+        this.currentPage++;
+        this.renderJobs();
+        this.showToast(`Loaded more jobs`, 'info');
+    }
+
+    showEmptyState() {
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('jobsGrid').style.display = 'none';
+        document.getElementById('loadingState').style.display = 'none';
+    }
+
+    showJobsGrid() {
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('jobsGrid').style.display = 'block';
+        document.getElementById('loadingState').style.display = 'none';
+    }
+
+    showLoadingState() {
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('jobsGrid').style.display = 'none';
+        document.getElementById('loadingState').style.display = 'block';
+    }
+
+    showAlertsModal() {
+        document.getElementById('alertsModal').classList.add('show');
+    }
+
+    hideAlertsModal() {
+        document.getElementById('alertsModal').classList.remove('show');
+    }
+
+    showJobModal(jobId) {
+        const job = this.jobs.find(j => j.id === jobId);
+        if (!job) return;
+
+        document.getElementById('modalJobTitle').textContent = job.title;
+        
+        const jobDetails = document.querySelector('.job-details');
+        jobDetails.innerHTML = this.getJobDetailsHTML(job);
+        
+        // Set up apply button with job ID
+        const applyBtn = document.getElementById('applyJobBtn');
+        applyBtn.setAttribute('data-job-id', jobId);
+        
+        // Set up save button with job ID
+        const saveBtn = document.getElementById('saveJobBtn');
+        saveBtn.setAttribute('data-job-id', jobId);
+        
+        document.getElementById('jobModal').classList.add('show');
+    }
+
+    hideJobModal() {
+        document.getElementById('jobModal').classList.remove('show');
+    }
+
+    getJobDetailsHTML(job) {
+        const companyName = this.getCompanyName(job, job.employerData);
+        const companyLogo = this.getCompanyLogo(job, job.employerData);
+
+        return `
+            <div class="job-detail-section">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <img src="${companyLogo}" 
+                         alt="${companyName} Logo" 
+                         style="width: 50px; height: 50px; border-radius: 8px; margin-right: 15px;"
+                         onerror="this.src='https://via.placeholder.com/50x50/3498db/ffffff?text=${companyName.charAt(0).toUpperCase()}'">
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${companyName}</h4>
+                        <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">${job.location || 'Location not specified'}</p>
+                    </div>
                 </div>
             </div>
+
+            <div class="job-detail-section">
+                <h4>Job Description</h4>
+                <p>${job.description || 'No description available.'}</p>
+            </div>
+
+            ${job.responsibilities && job.responsibilities.length > 0 ? `
+            <div class="job-detail-section">
+                <h4>Key Responsibilities</h4>
+                <ul>
+                    ${job.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+
+            ${job.requiredSkills && job.requiredSkills.length > 0 ? `
+            <div class="job-detail-section">
+                <h4>Required Skills</h4>
+                <div class="job-skills">
+                    ${job.requiredSkills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            ${job.benefits && job.benefits.length > 0 ? `
+            <div class="job-detail-section">
+                <h4>Benefits</h4>
+                <ul>
+                    ${job.benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+
+            <div class="job-detail-section">
+                <h4>Job Information</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div>
+                        <strong>Job Type:</strong><br>
+                        ${this.formatJobType(job.jobType)}
+                    </div>
+                    <div>
+                        <strong>Experience Level:</strong><br>
+                        ${this.formatExperience(job.experienceLevel)}
+                    </div>
+                    <div>
+                        <strong>Education:</strong><br>
+                        ${this.getEducationLabel(job.educationLevel)}
+                    </div>
+                    <div>
+                        <strong>Salary:</strong><br>
+                        ${job.formattedSalary}
+                    </div>
+                </div>
+            </div>
+
+            ${job.applicationDeadline ? `
+            <div class="job-detail-section">
+                <h4>Application Deadline</h4>
+                <p>${this.formatFirebaseDate(job.applicationDeadline)}</p>
+            </div>
+            ` : ''}
         `;
     }
 
-    formatStatus(status) {
-        const statusMap = {
-            'pending': 'Applied',
-            'reviewed': 'Under Review',
-            'shortlisted': 'Shortlisted',
-            'interview': 'Interview Stage',
-            'accepted': 'Accepted',
-            'rejected': 'Not Selected',
-            'withdrawn': 'Withdrawn'
-        };
-        return statusMap[status] || status || 'Applied';
-    }
-
-    formatJobType(jobType) {
+    formatJobType(type) {
         const types = {
             'full-time': 'Full-time',
             'part-time': 'Part-time',
@@ -659,628 +605,348 @@ class AppliedJobs {
             'internship': 'Internship',
             'remote': 'Remote'
         };
-        return types[jobType] || jobType || 'Not specified';
+        return types[type] || type || 'Not specified';
     }
 
-    formatDate(date) {
-        if (!date) return 'Recently';
-        
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-        
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric'
-        });
+    formatExperience(experience) {
+        const levels = {
+            'none': 'No experience',
+            '0-1': '0-1 years',
+            '1-3': '1-3 years',
+            '3-5': '3-5 years',
+            '5-10': '5-10 years',
+            '10+': '10+ years'
+        };
+        return levels[experience] || experience || 'Not specified';
     }
 
-    bindApplicationCardEvents() {
-        document.querySelectorAll('.view-application').forEach(btn => {
+    getEducationLabel(education) {
+        const educationLabels = {
+            'high_school': 'High School',
+            'certificate': 'Certificate',
+            'diploma': 'Diploma',
+            'associate': 'Associate Degree',
+            'bachelor': "Bachelor's Degree",
+            'master': "Master's Degree",
+            'phd': 'PhD',
+            'other': 'Other'
+        };
+        return educationLabels[education] || education || 'Not specified';
+    }
+
+    saveJobAlert() {
+        const keywords = document.getElementById('alertKeywords').value.trim();
+        const location = document.getElementById('alertLocation').value;
+        const jobType = document.getElementById('alertJobType').value;
+        const frequency = document.getElementById('alertFrequency').value;
+        const emailNotifications = document.getElementById('emailNotifications').checked;
+
+        if (!keywords) {
+            this.showToast('Please enter job keywords for your alert', 'error');
+            return;
+        }
+
+        // Simulate saving alert
+        setTimeout(() => {
+            this.hideAlertsModal();
+            this.showToast('Job alert saved successfully! You will be notified when matching jobs are posted.', 'success');
+            
+            // Reset form
+            document.getElementById('alertKeywords').value = '';
+            document.getElementById('alertLocation').value = '';
+            document.getElementById('alertJobType').value = '';
+            document.getElementById('alertFrequency').value = 'daily';
+            document.getElementById('emailNotifications').checked = false;
+        }, 1000);
+    }
+
+    async saveJob() {
+        const jobId = document.getElementById('saveJobBtn').getAttribute('data-job-id');
+        const job = this.jobs.find(j => j.id === jobId);
+        
+        if (!job) {
+            this.showToast('Job not found', 'error');
+            return;
+        }
+
+        // Check if user is authenticated
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            this.showToast('Please log in to save jobs', 'error');
+            return;
+        }
+
+        try {
+            const db = firebase.firestore();
+            await db.collection('savedJobs').add({
+                userId: user.uid,
+                jobId: jobId,
+                jobTitle: job.title,
+                companyName: job.company,
+                savedDate: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            this.showToast('Job saved to your favorites!', 'success');
+            this.hideJobModal();
+        } catch (error) {
+            console.error('Error saving job:', error);
+            this.showToast('Failed to save job. Please try again.', 'error');
+        }
+    }
+
+    applyForJob() {
+        const jobId = document.getElementById('applyJobBtn').getAttribute('data-job-id');
+        const job = this.jobs.find(j => j.id === jobId);
+        
+        if (!job) {
+            this.showToast('Job not found', 'error');
+            return;
+        }
+
+        // Check if user is authenticated
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            this.showToast('Please log in to apply for jobs', 'error');
+            // Redirect to login page
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+            return;
+        }
+
+        // Redirect to application page or show application modal
+        this.showToast('Redirecting to application page...', 'info');
+        setTimeout(() => {
+            // You can redirect to a separate application page or show a modal
+            // For now, just show a message
+            this.hideJobModal();
+            this.showToast('Application feature will be implemented soon!', 'info');
+        }, 1000);
+    }
+
+    renderJobs() {
+        const jobsList = document.getElementById('jobsList');
+        const jobsCount = document.getElementById('jobsCount');
+        
+        jobsCount.textContent = this.filteredJobs.length;
+        
+        if (this.filteredJobs.length === 0) {
+            this.showEmptyState();
+            return;
+        }
+        
+        const startIndex = (this.currentPage - 1) * this.jobsPerPage;
+        const endIndex = startIndex + this.jobsPerPage;
+        const jobsToShow = this.filteredJobs.slice(startIndex, endIndex);
+
+        jobsList.innerHTML = jobsToShow.map(job => `
+            <div class="job-card" data-job-id="${job.id}">
+                <div class="job-header">
+                    <div class="job-info">
+                        <h3 class="job-title">${job.title || 'No Title'}</h3>
+                        <p class="job-company">${job.company}</p>
+                        <div class="job-meta">
+                            <div class="job-meta-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>${job.location || 'Location not specified'}</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-clock"></i>
+                                <span>${this.formatJobType(job.jobType)}</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-briefcase"></i>
+                                <span>${this.formatExperience(job.experienceLevel)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="job-salary">
+                        <div class="salary-amount">${job.formattedSalary}</div>
+                        <div class="salary-type">${job.salaryType || 'monthly'}</div>
+                    </div>
+                </div>
+                
+                <p class="job-description">${job.description ? job.description.substring(0, 200) + '...' : 'No description available'}</p>
+                
+                ${job.requiredSkills && job.requiredSkills.length > 0 ? `
+                <div class="job-skills">
+                    ${job.requiredSkills.slice(0, 5).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                    ${job.requiredSkills.length > 5 ? `<span class="skill-tag">+${job.requiredSkills.length - 5} more</span>` : ''}
+                </div>
+                ` : ''}
+                
+                <div class="job-actions">
+                    <button class="btn btn-primary btn-sm view-details" data-job-id="${job.id}">
+                        <i class="fas fa-eye"></i>
+                        View Details
+                    </button>
+                    <button class="btn btn-outline btn-sm save-job" data-job-id="${job.id}">
+                        <i class="fas fa-bookmark"></i>
+                        Save
+                    </button>
+                    <button class="btn btn-secondary btn-sm quick-apply" data-job-id="${job.id}">
+                        <i class="fas fa-paper-plane"></i>
+                        Quick Apply
+                    </button>
+                </div>
+                
+                <div class="job-posted">
+                    <i class="fas fa-calendar"></i>
+                    Posted ${job.postedDate}
+                </div>
+            </div>
+        `).join('');
+        
+        // Add event listeners to job cards and buttons
+        this.attachJobEventListeners();
+        
+        // Show/hide load more button
+        const loadMoreSection = document.querySelector('.load-more-section');
+        if (this.filteredJobs.length > endIndex) {
+            loadMoreSection.style.display = 'block';
+        } else {
+            loadMoreSection.style.display = 'none';
+        }
+        
+        this.showJobsGrid();
+    }
+
+    attachJobEventListeners() {
+        // View details buttons
+        document.querySelectorAll('.view-details').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const applicationId = e.target.closest('.view-application').dataset.applicationId;
-                this.showApplicationDetails(applicationId);
+                const jobId = btn.getAttribute('data-job-id');
+                this.showJobModal(jobId);
             });
         });
 
-        document.querySelectorAll('.view-timeline').forEach(btn => {
+        // Save job buttons
+        document.querySelectorAll('.save-job').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const applicationId = e.target.closest('.view-timeline').dataset.applicationId;
-                this.showTimelineModal(applicationId);
+                const jobId = btn.getAttribute('data-job-id');
+                this.saveJobToList(jobId);
             });
         });
 
-        document.querySelectorAll('.contact-employer').forEach(btn => {
+        // Quick apply buttons
+        document.querySelectorAll('.quick-apply').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const applicationId = e.target.closest('.contact-employer').dataset.applicationId;
-                this.showContactModal(applicationId);
+                const jobId = btn.getAttribute('data-job-id');
+                this.quickApply(jobId);
             });
         });
 
-        document.querySelectorAll('.withdraw-application').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const applicationId = e.target.closest('.withdraw-application').dataset.applicationId;
-                this.showWithdrawModal(applicationId);
-            });
-        });
-
-        document.querySelectorAll('.application-card').forEach(card => {
+        // Make entire job card clickable
+        document.querySelectorAll('.job-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (!e.target.closest('button')) {
-                    const applicationId = card.dataset.applicationId;
-                    this.showApplicationDetails(applicationId);
+                    const jobId = card.getAttribute('data-job-id');
+                    this.showJobModal(jobId);
                 }
             });
         });
     }
 
-    showApplicationDetails(applicationId) {
-        const application = this.filteredApplications.find(app => app.id === applicationId);
-        if (!application) return;
+    async saveJobToList(jobId) {
+        const job = this.jobs.find(j => j.id === jobId);
+        
+        if (!job) {
+            this.showToast('Job not found', 'error');
+            return;
+        }
 
-        this.currentApplication = application;
-        const sidebar = document.getElementById('applicationDetailsSidebar');
-        const content = document.getElementById('sidebarContent');
-
-        content.innerHTML = this.createApplicationDetailsHTML(application);
-        sidebar.classList.add('active');
-    }
-
-    createApplicationDetailsHTML(application) {
-        const job = application.job || {};
-        const company = application.company || {};
-        const statusClass = `status-${application.status || 'pending'}`;
-
-        const companyName = company.companyName || job.company || 'Unknown Company';
-        const logoUrl = company.logoUrl;
-        const jobTitle = job.title || 'Unknown Position';
-        const jobLocation = job.location || 'Location not specified';
-
-        const logoHTML = logoUrl ? 
-            `<img src="${logoUrl}" alt="${companyName}" class="company-logo">` :
-            `<div class="company-logo no-logo" title="${companyName}">
-                <i class="fas fa-building"></i>
-             </div>`;
-
-        return `
-            <div class="application-detail-view">
-                <div class="detail-section">
-                    <div class="company-header">
-                        ${logoHTML}
-                        <div class="company-info">
-                            <h3>${companyName}</h3>
-                            <p>${jobLocation}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <h4>Job Details</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Job Title</span>
-                            <span class="detail-value">${jobTitle}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Job Type</span>
-                            <span class="detail-value">${this.formatJobType(job.type)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Location</span>
-                            <span class="detail-value">${jobLocation}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Salary</span>
-                            <span class="detail-value">${job.salary || 'Not specified'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                ${job.description ? `
-                <div class="detail-section">
-                    <h4>Job Description</h4>
-                    <div class="job-description">${job.description}</div>
-                </div>
-                ` : ''}
-
-                <div class="detail-section">
-                    <h4>Application Information</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Application ID</span>
-                            <span class="detail-value">${application.id}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Applied Date</span>
-                            <span class="detail-value">${application.appliedAt ? application.appliedAt.toLocaleDateString() : 'Not specified'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Current Status</span>
-                            <span class="detail-value status-badge ${statusClass}">${this.formatStatus(application.status)}</span>
-                        </div>
-                    </div>
-                </div>
-
-                ${application.coverLetter ? `
-                <div class="detail-section">
-                    <h4>Your Cover Letter</h4>
-                    <div style="background: var(--light-gray); padding: 15px; border-radius: 8px;">
-                        <p style="line-height: 1.6; white-space: pre-wrap;">${application.coverLetter}</p>
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.resumeUrl ? `
-                <div class="detail-section">
-                    <h4>Submitted Resume</h4>
-                    <div class="resume-preview">
-                        <a href="${application.resumeUrl}" target="_blank" class="btn btn-outline">
-                            <i class="fas fa-file-pdf"></i>
-                            View Resume
-                        </a>
-                    </div>
-                </div>
-                ` : ''}
-
-                <div class="action-buttons">
-                    <button class="btn btn-primary" id="viewTimelineFromSidebar">
-                        <i class="fas fa-history"></i>
-                        Full Timeline
-                    </button>
-                    <button class="btn btn-secondary" id="contactEmployerFromSidebar">
-                        <i class="fas fa-envelope"></i>
-                        Contact Employer
-                    </button>
-                    ${application.status !== 'withdrawn' && application.status !== 'rejected' ? `
-                    <button class="btn btn-danger" id="withdrawFromSidebar">
-                        <i class="fas fa-ban"></i>
-                        Withdraw Application
-                    </button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }
-
-    showTimelineModal(applicationId) {
-        const application = this.filteredApplications.find(app => app.id === applicationId);
-        if (!application) return;
-
-        const modal = document.getElementById('timelineModal');
-        const content = document.getElementById('timelineContent');
-
-        content.innerHTML = this.createTimelineHTML(application);
-        modal.style.display = 'flex';
-    }
-
-    createTimelineHTML(application) {
-        const job = application.job || {};
-        const company = application.company || {};
-        const companyName = company.companyName || job.company || 'Unknown Company';
-
-        return `
-            <div class="timeline-container">
-                <div class="timeline-event">
-                    <div class="event-date">${application.appliedAt ? application.appliedAt.toLocaleString() : 'Recently'}</div>
-                    <div class="event-title">Application Submitted</div>
-                    <div class="event-description">
-                        You applied for the <strong>${job.title}</strong> position at <strong>${companyName}</strong>.
-                        ${application.coverLetter ? 'Your cover letter and resume were submitted successfully.' : 'Your application was submitted successfully.'}
-                    </div>
-                </div>
-
-                ${application.status === 'pending' || application.status === 'reviewed' ? `
-                <div class="timeline-event warning">
-                    <div class="event-date">Currently</div>
-                    <div class="event-title">Under Review</div>
-                    <div class="event-description">
-                        Your application is currently being reviewed by the hiring team at ${companyName}. 
-                        This process typically takes 3-7 business days.
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.status === 'shortlisted' ? `
-                <div class="timeline-event success">
-                    <div class="event-date">Recently</div>
-                    <div class="event-title">Application Shortlisted</div>
-                    <div class="event-description">
-                        Great news! Your application has been shortlisted. The employer is interested in your profile and may contact you for next steps.
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.status === 'interview' ? `
-                <div class="timeline-event success">
-                    <div class="event-date">Recently</div>
-                    <div class="event-title">Interview Stage</div>
-                    <div class="event-description">
-                        Your application has progressed to the interview stage. The employer will contact you to schedule an interview.
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.status === 'accepted' ? `
-                <div class="timeline-event success">
-                    <div class="event-date">Recently</div>
-                    <div class="event-title">Application Accepted</div>
-                    <div class="event-description">
-                        Congratulations! Your application has been accepted. The employer may contact you for next steps.
-                    </div>
-                </div>
-                ` : ''}
-
-                ${application.status === 'rejected' ? `
-                <div class="timeline-event rejected">
-                    <div class="event-date">Recently</div>
-                    <div class="event-title">Application Not Selected</div>
-                    <div class="event-description">
-                        Unfortunately, your application was not selected for this position. 
-                        We encourage you to continue applying for other positions that match your skills and experience.
-                    </div>
-                </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    showContactModal(applicationId) {
-        const application = this.filteredApplications.find(app => app.id === applicationId);
-        if (!application) return;
-
-        const modal = document.getElementById('contactModal');
-        const applicationInfo = document.getElementById('contactApplicationInfo');
-        const job = application.job || {};
-        const company = application.company || {};
-        const companyName = company.companyName || job.company || 'Company';
-
-        applicationInfo.innerHTML = `
-            <strong>${companyName}</strong><br>
-            <small>Regarding your application for: ${job.title} (Applied: ${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'})</small>
-        `;
-
-        modal.style.display = 'flex';
-
-        document.getElementById('sendContactMessage').onclick = () => {
-            this.sendContactMessage(applicationId);
-        };
-    }
-
-    async sendContactMessage(applicationId) {
-        const message = document.getElementById('contactMessage').value;
-        const includeResume = document.getElementById('includeResume').checked;
-
-        if (!message.trim()) {
-            this.showToast('Please enter a message', 'error');
+        // Check if user is authenticated
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            this.showToast('Please log in to save jobs', 'error');
             return;
         }
 
         try {
-            this.hideModal('contactModal');
-            this.showToast('Message sent successfully to employer');
-            
-        } catch (error) {
-            console.error('Error sending message:', error);
-            this.showToast('Error sending message', 'error');
-        }
-    }
-
-    showWithdrawModal(applicationId) {
-        const application = this.filteredApplications.find(app => app.id === applicationId);
-        if (!application) return;
-
-        const modal = document.getElementById('withdrawModal');
-        const applicationInfo = document.getElementById('withdrawApplicationInfo');
-        const job = application.job || {};
-        const company = application.company || {};
-        const companyName = company.companyName || job.company || 'Company';
-
-        applicationInfo.innerHTML = `
-            <strong>${job.title} at ${companyName}</strong><br>
-            <small>Applied: ${application.appliedAt ? this.formatDate(application.appliedAt) : 'Recently'} • Current Status: ${this.formatStatus(application.status)}</small>
-        `;
-
-        modal.style.display = 'flex';
-
-        document.getElementById('confirmWithdraw').onclick = () => {
-            this.withdrawApplication(applicationId);
-        };
-    }
-
-    async withdrawApplication(applicationId) {
-        const reason = document.getElementById('withdrawReason').value;
-
-        try {
-            await updateDoc(doc(db, 'applications', applicationId), {
-                status: 'withdrawn',
-                updatedAt: Timestamp.now(),
-                withdrawalReason: reason || null
+            const db = firebase.firestore();
+            await db.collection('savedJobs').add({
+                userId: user.uid,
+                jobId: jobId,
+                jobTitle: job.title,
+                companyName: job.company,
+                savedDate: firebase.firestore.FieldValue.serverTimestamp()
             });
-            
-            this.hideModal('withdrawModal');
-            this.showToast('Application withdrawn successfully');
-            
-            const application = this.applications.find(app => app.id === applicationId);
-            if (application) {
-                application.status = 'withdrawn';
-                application.withdrawalReason = reason;
-            }
-            
-            this.applyFilters();
-            this.renderApplications();
-            this.updateStats();
-            
-            if (this.currentApplication && this.currentApplication.id === applicationId) {
-                this.showApplicationDetails(applicationId);
-            }
-            
+
+            this.showToast('Job saved to your favorites!', 'success');
         } catch (error) {
-            console.error('Error withdrawing application:', error);
-            this.showToast('Error withdrawing application', 'error');
+            console.error('Error saving job:', error);
+            this.showToast('Failed to save job. Please try again.', 'error');
         }
     }
 
-    renderPagination() {
-        const pagination = document.getElementById('pagination');
-        const totalPages = Math.ceil(this.filteredApplications.length / this.applicationsPerPage);
+    quickApply(jobId) {
+        const job = this.jobs.find(j => j.id === jobId);
         
-        if (totalPages <= 1) {
-            pagination.innerHTML = '';
+        if (!job) {
+            this.showToast('Job not found', 'error');
             return;
         }
 
-        let paginationHTML = `
-            <div class="pagination-info">
-                Showing ${((this.currentPage - 1) * this.applicationsPerPage) + 1} to 
-                ${Math.min(this.currentPage * this.applicationsPerPage, this.filteredApplications.length)} 
-                of ${this.filteredApplications.length} applications
+        // Check if user is authenticated
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            this.showToast('Please log in to apply for jobs', 'error');
+            return;
+        }
+
+        this.showJobModal(jobId);
+        this.showToast('Please use the "Apply Now" button in the job details', 'info');
+    }
+
+    showToast(message, type = 'info') {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 
+                                 type === 'error' ? 'exclamation-circle' : 
+                                 'info-circle'}"></i>
+                <span>${message}</span>
             </div>
-            <div class="pagination-controls">
         `;
-
-        paginationHTML += `
-            <button class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} 
-                    onclick="appliedJobs.goToPage(${this.currentPage - 1})">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-        `;
-
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= this.currentPage - 1 && i <= this.currentPage + 1)) {
-                paginationHTML += `
-                    <button class="pagination-btn ${i === this.currentPage ? 'active' : ''}" 
-                            onclick="appliedJobs.goToPage(${i})">
-                        ${i}
-                    </button>
-                `;
-            } else if (i === this.currentPage - 2 || i === this.currentPage + 2) {
-                paginationHTML += `<span class="pagination-dots">...</span>`;
-            }
-        }
-
-        paginationHTML += `
-            <button class="pagination-btn" ${this.currentPage === totalPages ? 'disabled' : ''} 
-                    onclick="appliedJobs.goToPage(${this.currentPage + 1})">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        `;
-
-        paginationHTML += `</div>`;
-        pagination.innerHTML = paginationHTML;
-    }
-
-    goToPage(page) {
-        this.currentPage = page;
-        this.renderApplications();
-    }
-
-    updateStats() {
-        const totalApplications = this.applications.length;
-        const pendingApplications = this.applications.filter(app => 
-            app.status === 'pending' || app.status === 'reviewed'
-        ).length;
-        const shortlistedApplications = this.applications.filter(app => 
-            app.status === 'shortlisted'
-        ).length;
-        const interviewApplications = this.applications.filter(app => 
-            app.status === 'interview'
-        ).length;
-        const rejectedApplications = this.applications.filter(app => 
-            app.status === 'rejected' || app.status === 'withdrawn'
-        ).length;
-
-        document.getElementById('totalApplicationsCount').textContent = totalApplications;
-        document.getElementById('pendingApplicationsCount').textContent = pendingApplications;
-        document.getElementById('shortlistedApplicationsCount').textContent = shortlistedApplications;
-        document.getElementById('interviewApplicationsCount').textContent = interviewApplications;
-        document.getElementById('rejectedApplicationsCount').textContent = rejectedApplications;
-    }
-
-    bindEvents() {
-        document.getElementById('applicationSearch').addEventListener('input', (e) => {
-            this.filters.search = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderApplications();
-        });
-
-        document.getElementById('statusFilter').addEventListener('change', (e) => {
-            this.filters.status = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderApplications();
-        });
-
-        document.getElementById('dateFilter').addEventListener('change', (e) => {
-            this.filters.date = e.target.value;
-            this.currentPage = 1;
-            this.applyFilters();
-            this.renderApplications();
-        });
-
-        document.getElementById('sortBy').addEventListener('change', (e) => {
-            this.filters.sortBy = e.target.value;
-            this.applyFilters();
-            this.renderApplications();
-        });
-
-        document.getElementById('clearFilters').addEventListener('click', () => {
-            this.clearFilters();
-        });
-
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const view = e.target.closest('.view-btn').dataset.view;
-                this.setView(view);
-            });
-        });
-
-        document.getElementById('refreshApplications').addEventListener('click', () => {
-            this.loadAllApplications();
-        });
-
-        document.getElementById('closeSidebar').addEventListener('click', () => {
-            document.getElementById('applicationDetailsSidebar').classList.remove('active');
-        });
-
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const modal = e.target.closest('.modal');
-                modal.style.display = 'none';
-            });
-        });
-
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        });
-
-        document.getElementById('cancelWithdraw').addEventListener('click', () => {
-            this.hideModal('withdrawModal');
-        });
-
-        document.getElementById('cancelContact').addEventListener('click', () => {
-            this.hideModal('contactModal');
-        });
-
-        document.getElementById('closeTimeline').addEventListener('click', () => {
-            this.hideModal('timelineModal');
-        });
-
-        document.getElementById('exportApplications').addEventListener('click', () => {
-            this.exportApplicationsData();
-        });
-
-        document.querySelector('.logout-btn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleLogout();
-        });
-    }
-
-    clearFilters() {
-        document.getElementById('applicationSearch').value = '';
-        document.getElementById('statusFilter').value = 'all';
-        document.getElementById('dateFilter').value = 'all';
-        document.getElementById('sortBy').value = 'newest';
         
-        this.filters = {
-            search: '',
-            status: 'all',
-            date: 'all',
-            sortBy: 'newest'
-        };
-        
-        this.currentPage = 1;
-        this.applyFilters();
-        this.renderApplications();
-    }
+        document.body.appendChild(toast);
 
-    setView(view) {
-        this.currentView = view;
-        this.currentPage = 1;
-        
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-view="${view}"]`).classList.add('active');
-        
-        this.renderApplications();
-    }
-
-    exportApplicationsData() {
-        this.showToast('Applications data exported successfully');
-    }
-
-    hideModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    showToast(message, type = 'success') {
-        const toast = document.getElementById('successToast');
-        const messageElement = document.getElementById('toastMessage');
-        
-        messageElement.textContent = message;
-        
-        if (type === 'error') {
-            toast.style.borderLeftColor = 'var(--accent)';
-            toast.querySelector('i').className = 'fas fa-exclamation-circle';
-            toast.querySelector('i').style.color = 'var(--accent)';
-        } else {
-            toast.style.borderLeftColor = 'var(--success)';
-            toast.querySelector('i').className = 'fas fa-check-circle';
-            toast.querySelector('i').style.color = 'var(--success)';
-        }
-        
-        toast.style.display = 'block';
-        
+        // Remove toast after 4 seconds
         setTimeout(() => {
             toast.style.animation = 'slideOutRight 0.3s ease';
             setTimeout(() => {
-                toast.style.display = 'none';
-                toast.style.animation = '';
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
             }, 300);
-        }, 3000);
+        }, 4000);
     }
 
-    showErrorState(container, error) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error Loading Applications</h3>
-                <p>There was a problem loading your application data. Please try again.</p>
-                <button class="btn btn-primary" onclick="appliedJobs.loadAllApplications()">
-                    <i class="fas fa-refresh"></i>
-                    Try Again
-                </button>
-            </div>
-        `;
-    }
-
-    async handleLogout() {
-        try {
-            await signOut(auth);
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Error signing out:', error);
-            this.showToast('Error signing out', 'error');
-        }
+    showError(message) {
+        this.showToast(message, 'error');
     }
 }
 
-let appliedJobs;
-document.addEventListener('DOMContentLoaded', function() {
-    appliedJobs = new AppliedJobs();
+// Initialize the browse jobs functionality when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if Firebase auth scripts are loaded
+    if (typeof firebase !== 'undefined') {
+        window.browseJobs = new BrowseJobs();
+    } else {
+        console.error('Firebase SDK not loaded');
+        // Show error state
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('emptyState').innerHTML = `
+            <div class="empty-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2>Firebase Error</h2>
+            <p>Failed to load Firebase SDK. Please refresh the page.</p>
+        `;
+    }
 });
