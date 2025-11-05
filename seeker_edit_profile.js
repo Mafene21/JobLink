@@ -586,26 +586,30 @@ class SeekerEditProfile {
         });
     }
 
-    async sendRefereeEmail(referee) {
-        if (!this.firebaseInitialized) {
-            this.showToast('Referee added locally. Email service not available.', 'warning');
-            return;
-        }
+   async sendRefereeEmail(referee) {
+  try {
+    await emailjs.send(
+      "service_0d488se", // 🔹 your Service ID
+      "template_pfejqbd", // 🔹 your Template ID
+      {
+        to_name: referee.name,
+        from_name: this.formData.fullName || "Job Mart Applicant",
+        website_link: "https://mafene21.github.io/Joblink/" // 🔹 optional site link
+      },
+      {
+        publicKey: "f_gQvnsE7xygSHyBE" // 🔹 your Public Key
+      }
+    );
 
-        try {
-            // For now, just simulate email sending since we don't have the cloud function
-            console.log('Would send email to:', referee.email);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            this.showRefereeEmailModal(referee.email);
-            this.showToast('Reference request sent successfully', 'success');
-        } catch (error) {
-            console.error('Error sending referee email:', error);
-            this.showToast('Referee added locally. Email service temporarily unavailable.', 'warning');
-        }
-    }
+    this.showRefereeEmailModal(referee.email);
+    this.showToast(`Reference request sent to ${referee.email}`, "success");
+
+  } catch (error) {
+    console.error("Error sending email:", error);
+    this.showToast("Failed to send referee email. Please try again later.", "error");
+  }
+}
+
 
     showRefereeEmailModal(email) {
         const refereeEmailSent = document.getElementById('refereeEmailSent');
