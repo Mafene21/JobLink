@@ -1,46 +1,17 @@
-// Firebase configuration
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged,
-  signOut 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  where, 
-  getDocs,
-  doc,
-  getDoc
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
-  authDomain: "joblink-babb6.firebaseapp.com",
-  projectId: "joblink-babb6",
-  storageBucket: "joblink-babb6.firebasestorage.app",
-  messagingSenderId: "442169381701",
-  appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
-  measurementId: "G-Z0737HMGCQ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
+// Employer Dashboard JavaScript with Advanced Applicant Tracking
 class EmployerDashboard {
     constructor() {
         this.currentUser = null;
         this.companyData = null;
         this.jobs = [];
+        this.applications = [];
         this.potentialCandidatesCount = 0;
+        this.totalApplicantsCount = 0;
         this.init();
     }
 
     async init() {
+        await this.initializeFirebase();
         await this.checkAuthState();
         this.bindEvents();
         this.addTouchEvents();
@@ -49,18 +20,46 @@ class EmployerDashboard {
         window.employerDashboard = this;
     }
 
-    async checkAuthState() {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                this.currentUser = user;
-                console.log('User authenticated:', user.uid);
-                await this.loadCompanyData();
-                await this.loadJobPostings();
-                await this.calculatePotentialCandidatesCount();
-                this.updateStats();
-            } else {
-                window.location.href = 'login.html';
+    initializeFirebase() {
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
+            authDomain: "joblink-babb6.firebaseapp.com",
+            projectId: "joblink-babb6",
+            storageBucket: "joblink-babb6.firebasestorage.app",
+            messagingSenderId: "442169381701",
+            appId: "1:442169381701:web:d8ec90c72aab424d2d242c",
+            measurementId: "G-Z0737HMGCQ"
+        };
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
             }
+            console.log("Firebase initialized successfully");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            this.showError("Failed to initialize Firebase. Please refresh the page.");
+        }
+    }
+
+    async checkAuthState() {
+        return new Promise((resolve) => {
+            firebase.auth().onAuthStateChanged(async (user) => {
+                if (user) {
+                    this.currentUser = user;
+                    console.log('User authenticated:', user.uid);
+                    await this.loadCompanyData();
+                    await this.loadApplications();
+                    await this.loadJobPostings();
+                    await this.calculatePotentialCandidatesCount();
+                    this.updateStats();
+                    resolve();
+                } else {
+                    console.log('No user authenticated, redirecting to login');
+                    window.location.href = 'login.html';
+                    resolve();
+                }
+            });
         });
     }
 
@@ -68,17 +67,19 @@ class EmployerDashboard {
         try {
             console.log('Loading company data for user:', this.currentUser.uid);
             
+            const db = firebase.firestore();
+            
             // Try to get company data from companies collection first
-            const companyDoc = await getDoc(doc(db, 'companies', this.currentUser.uid));
-            if (companyDoc.exists()) {
+            const companyDoc = await db.collection('companies').doc(this.currentUser.uid).get();
+            if (companyDoc.exists) {
                 this.companyData = companyDoc.data();
                 console.log('Company data loaded from companies collection:', this.companyData);
                 this.updateCompanyUI();
             } else {
                 console.log('No company data found in companies collection, trying users collection...');
                 // Fallback to user data
-                const userDoc = await getDoc(doc(db, 'users', this.currentUser.uid));
-                if (userDoc.exists()) {
+                const userDoc = await db.collection('users').doc(this.currentUser.uid).get();
+                if (userDoc.exists) {
                     this.companyData = userDoc.data();
                     console.log('Company data loaded from users collection:', this.companyData);
                     this.updateCompanyUI();
@@ -108,27 +109,57 @@ class EmployerDashboard {
         const logoUrl = this.companyData?.logoUrl;
         console.log('Logo URL:', logoUrl);
         
-        if (logoUrl && logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
+        if (logoUrl && logoUrl.trim() !== '' && logoUrl !== 'https://via.placeholder.com/150x150?text=Company+Logo') {
             companyLogo.src = logoUrl;
             companyLogoNav.src = logoUrl;
             console.log('Company logo updated');
         } else {
             // Use default logo if no logo is set
-            companyLogo.src = 'https://via.placeholder.com/60x60?text=LOGO';
-            companyLogoNav.src = 'https://via.placeholder.com/32x32?text=LOGO';
+            companyLogo.src = 'https://via.placeholder.com/60x60/2563eb/ffffff?text=LOGO';
+            companyLogoNav.src = 'https://via.placeholder.com/32x32/2563eb/ffffff?text=LOGO';
             console.log('Using default logo');
         }
 
         // Add error handling for images
         companyLogo.onerror = () => {
             console.log('Company logo failed to load, using default');
-            companyLogo.src = 'https://via.placeholder.com/60x60?text=LOGO';
+            companyLogo.src = 'https://via.placeholder.com/60x60/2563eb/ffffff?text=LOGO';
         };
         
         companyLogoNav.onerror = () => {
             console.log('Nav logo failed to load, using default');
-            companyLogoNav.src = 'https://via.placeholder.com/32x32?text=LOGO';
+            companyLogoNav.src = 'https://via.placeholder.com/32x32/2563eb/ffffff?text=LOGO';
         };
+    }
+
+    async loadApplications() {
+        try {
+            const db = firebase.firestore();
+            const jobsQuery = db.collection('jobs').where('employerId', '==', this.currentUser.uid);
+            
+            const jobsSnapshot = await jobsQuery.get();
+            const jobIds = jobsSnapshot.docs.map(doc => doc.id);
+            
+            this.applications = [];
+            this.totalApplicantsCount = 0;
+            
+            for (const jobId of jobIds) {
+                const applicationsQuery = db.collection('applications').where('jobId', '==', jobId);
+                const applicationsSnapshot = await applicationsQuery.get();
+                
+                applicationsSnapshot.forEach(doc => {
+                    this.applications.push({ id: doc.id, ...doc.data() });
+                });
+            }
+            
+            this.totalApplicantsCount = this.applications.length;
+            console.log('Total applicants loaded:', this.totalApplicantsCount);
+            
+        } catch (error) {
+            console.error('Error loading applications:', error);
+            this.applications = [];
+            this.totalApplicantsCount = 0;
+        }
     }
 
     async loadJobPostings() {
@@ -144,16 +175,15 @@ class EmployerDashboard {
             `;
 
             console.log('Loading jobs for employer:', this.currentUser.uid);
-            const jobsQuery = query(
-                collection(db, 'jobs'),
-                where('employerId', '==', this.currentUser.uid)
-            );
+            const db = firebase.firestore();
+            const jobsQuery = db.collection('jobs').where('employerId', '==', this.currentUser.uid);
             
-            const querySnapshot = await getDocs(jobsQuery);
+            const querySnapshot = await jobsQuery.get();
             console.log('Found', querySnapshot.size, 'jobs');
             
             if (querySnapshot.empty) {
                 this.showNoJobsState(jobsList);
+                this.jobs = [];
                 return;
             }
 
@@ -164,6 +194,11 @@ class EmployerDashboard {
                 const job = { id: doc.id, ...doc.data() };
                 jobsData.push(job);
             });
+            
+            // Calculate applicant counts for each job
+            for (let job of jobsData) {
+                job.applicantCount = await this.getApplicantCountForJob(job.id);
+            }
             
             // Sort manually by createdAt date (newest first)
             jobsData.sort((a, b) => {
@@ -181,35 +216,332 @@ class EmployerDashboard {
         }
     }
 
+    async getApplicantCountForJob(jobId) {
+        try {
+            const db = firebase.firestore();
+            const applicationsQuery = db.collection('applications').where('jobId', '==', jobId);
+            const applicationsSnapshot = await applicationsQuery.get();
+            return applicationsSnapshot.size;
+        } catch (error) {
+            console.error('Error getting applicant count for job:', jobId, error);
+            return 0;
+        }
+    }
+
     async calculatePotentialCandidatesCount() {
         try {
             let totalPotentialCandidates = 0;
+            const db = firebase.firestore();
             
             for (const job of this.jobs) {
-                const seekersQuery = query(collection(db, 'users'), where('userType', '==', 'seeker'));
-                const seekersSnapshot = await getDocs(seekersQuery);
+                const seekersQuery = db.collection('users').where('userType', '==', 'seeker');
+                const seekersSnapshot = await seekersQuery.get();
                 
                 let jobPotentialCandidates = 0;
                 
-                for (const seekerDoc of seekersSnapshot.docs) {
+                seekersSnapshot.forEach(seekerDoc => {
                     const seeker = { id: seekerDoc.id, ...seekerDoc.data() };
-                    const matchScore = this.calculateMatchScore(job, seeker);
+                    const matchScore = this.calculateAdvancedMatchScore(job, seeker);
                     
-                    if (matchScore > 0.3) {
+                    if (matchScore >= 50) { // 50% match threshold
                         jobPotentialCandidates++;
                     }
-                }
+                });
                 
                 totalPotentialCandidates += jobPotentialCandidates;
             }
             
             this.potentialCandidatesCount = totalPotentialCandidates;
-            this.updateStats();
+            console.log('Potential candidates count:', this.potentialCandidatesCount);
             
         } catch (error) {
             console.error('Error calculating potential candidates:', error);
             this.potentialCandidatesCount = 0;
         }
+    }
+
+    calculateAdvancedMatchScore(job, seeker) {
+        if (!job || !seeker) return 0;
+
+        let score = 0;
+        let totalWeight = 0;
+
+        // Job Type Matching (25% weight)
+        if (job.jobType && seeker.jobTypes) {
+            const userJobTypes = Array.isArray(seeker.jobTypes) ? 
+                seeker.jobTypes : [seeker.jobTypes];
+            
+            if (userJobTypes.includes(job.jobType)) {
+                score += 100 * 0.25;
+            } else {
+                // Partial match for similar types
+                const similarTypes = {
+                    'full-time': ['part-time', 'contract'],
+                    'part-time': ['full-time', 'contract'],
+                    'contract': ['full-time', 'part-time'],
+                    'remote': ['full-time', 'part-time', 'contract'],
+                    'internship': ['full-time', 'part-time']
+                };
+                
+                if (similarTypes[job.jobType]) {
+                    const hasSimilar = userJobTypes.some(type => 
+                        similarTypes[job.jobType].includes(type)
+                    );
+                    if (hasSimilar) score += 50 * 0.25;
+                }
+            }
+            totalWeight += 0.25;
+        }
+
+        // Category Matching (25% weight)
+        if (job.category && seeker.categories) {
+            const userCategories = Array.isArray(seeker.categories) ? 
+                seeker.categories : [seeker.categories];
+            const jobCategories = Array.isArray(job.category) ? 
+                job.category : [job.category];
+            
+            const matchingCategories = jobCategories.filter(cat => 
+                userCategories.includes(cat)
+            );
+            
+            if (matchingCategories.length > 0) {
+                score += 100 * 0.25;
+            } else {
+                // Check for similar categories
+                const categorySimilarity = this.calculateCategorySimilarity(userCategories, jobCategories);
+                score += categorySimilarity * 0.25;
+            }
+            totalWeight += 0.25;
+        }
+
+        // Industry Matching (20% weight)
+        if (job.industry && seeker.industries) {
+            const userIndustries = Array.isArray(seeker.industries) ? 
+                seeker.industries : [seeker.industries];
+            const jobIndustries = Array.isArray(job.industry) ? 
+                job.industry : [job.industry];
+            
+            const matchingIndustries = jobIndustries.filter(ind => 
+                userIndustries.includes(ind)
+            );
+            
+            if (matchingIndustries.length > 0) {
+                score += 100 * 0.20;
+            } else {
+                // Check for similar industries
+                const industrySimilarity = this.calculateIndustrySimilarity(userIndustries, jobIndustries);
+                score += industrySimilarity * 0.20;
+            }
+            totalWeight += 0.20;
+        }
+
+        // Location Matching (20% weight)
+        if (job.location && seeker.location) {
+            const locationMatch = this.calculateLocationMatch(seeker.location, job.location);
+            score += locationMatch * 0.20;
+            totalWeight += 0.20;
+        }
+
+        // Skills Matching (10% weight)
+        if (job.requiredSkills && seeker.skills) {
+            const userSkills = Array.isArray(seeker.skills) ? 
+                seeker.skills : [seeker.skills];
+            const jobSkills = Array.isArray(job.requiredSkills) ? 
+                job.requiredSkills : [job.requiredSkills];
+            
+            const matchingSkills = jobSkills.filter(skill => 
+                userSkills.some(userSkill => 
+                    userSkill.toLowerCase().includes(skill.toLowerCase()) ||
+                    skill.toLowerCase().includes(userSkill.toLowerCase())
+                )
+            );
+            
+            const skillsScore = jobSkills.length > 0 ? 
+                (matchingSkills.length / jobSkills.length) * 100 : 0;
+            score += skillsScore * 0.10;
+            totalWeight += 0.10;
+        }
+
+        const normalizedScore = totalWeight > 0 ? Math.round(score / totalWeight) : 0;
+        return Math.max(0, Math.min(100, normalizedScore));
+    }
+
+    calculateCategorySimilarity(userCategories, jobCategories) {
+        // Define category groups for similarity calculation
+        const categoryGroups = {
+            'technology': ['software-development', 'web-development', 'mobile-development', 'data-science', 'ai-ml'],
+            'design': ['graphic-design', 'ui-ux-design', 'web-design', 'product-design'],
+            'business': ['marketing', 'sales', 'business-development', 'project-management'],
+            'finance': ['accounting', 'finance', 'banking', 'investment'],
+            'healthcare': ['nursing', 'medical', 'healthcare', 'pharmaceutical']
+        };
+
+        let maxSimilarity = 0;
+        
+        userCategories.forEach(userCat => {
+            jobCategories.forEach(jobCat => {
+                let similarity = 0;
+                
+                // Exact match
+                if (userCat === jobCat) {
+                    similarity = 100;
+                } else {
+                    // Check if they belong to the same group
+                    for (const group in categoryGroups) {
+                        const groupCategories = categoryGroups[group];
+                        if (groupCategories.includes(userCat) && groupCategories.includes(jobCat)) {
+                            similarity = 75;
+                            break;
+                        }
+                    }
+                    
+                    // Check for partial string match
+                    if (similarity === 0) {
+                        const userWords = userCat.toLowerCase().split(/[-_ ]/);
+                        const jobWords = jobCat.toLowerCase().split(/[-_ ]/);
+                        const commonWords = userWords.filter(word => 
+                            jobWords.some(jobWord => this.calculateSimilarity(word, jobWord) > 0.7)
+                        );
+                        
+                        if (commonWords.length > 0) {
+                            similarity = 50;
+                        }
+                    }
+                }
+                
+                maxSimilarity = Math.max(maxSimilarity, similarity);
+            });
+        });
+        
+        return maxSimilarity;
+    }
+
+    calculateIndustrySimilarity(userIndustries, jobIndustries) {
+        // Define industry groups for similarity calculation
+        const industryGroups = {
+            'technology': ['software', 'hardware', 'internet', 'telecommunications', 'it-services'],
+            'finance': ['banking', 'insurance', 'investment', 'financial-services'],
+            'healthcare': ['hospitals', 'pharmaceuticals', 'medical-devices', 'healthcare-services'],
+            'retail': ['e-commerce', 'consumer-goods', 'fashion', 'retail-services'],
+            'manufacturing': ['automotive', 'industrial', 'construction', 'energy']
+        };
+
+        let maxSimilarity = 0;
+        
+        userIndustries.forEach(userInd => {
+            jobIndustries.forEach(jobInd => {
+                let similarity = 0;
+                
+                // Exact match
+                if (userInd === jobInd) {
+                    similarity = 100;
+                } else {
+                    // Check if they belong to the same group
+                    for (const group in industryGroups) {
+                        const groupIndustries = industryGroups[group];
+                        if (groupIndustries.includes(userInd) && groupIndustries.includes(jobInd)) {
+                            similarity = 75;
+                            break;
+                        }
+                    }
+                    
+                    // Check for partial string match
+                    if (similarity === 0) {
+                        const userWords = userInd.toLowerCase().split(/[-_ ]/);
+                        const jobWords = jobInd.toLowerCase().split(/[-_ ]/);
+                        const commonWords = userWords.filter(word => 
+                            jobWords.some(jobWord => this.calculateSimilarity(word, jobWord) > 0.7)
+                        );
+                        
+                        if (commonWords.length > 0) {
+                            similarity = 50;
+                        }
+                    }
+                }
+                
+                maxSimilarity = Math.max(maxSimilarity, similarity);
+            });
+        });
+        
+        return maxSimilarity;
+    }
+
+    calculateLocationMatch(userLocation, jobLocation) {
+        if (!userLocation || !jobLocation) return 0;
+        
+        const userLoc = userLocation.toLowerCase().trim();
+        const jobLoc = jobLocation.toLowerCase().trim();
+        
+        // Exact match
+        if (userLoc === jobLoc) return 100;
+        
+        // Check for same city/state
+        const userParts = userLoc.split(',');
+        const jobParts = jobLoc.split(',');
+        
+        if (userParts.length > 0 && jobParts.length > 0) {
+            const userCity = userParts[0].trim();
+            const jobCity = jobParts[0].trim();
+            
+            if (userCity === jobCity) return 90;
+            
+            // Check for similar city names
+            if (this.calculateSimilarity(userCity, jobCity) > 0.8) return 80;
+        }
+        
+        // Check for same state
+        if (userParts.length > 1 && jobParts.length > 1) {
+            const userState = userParts[1].trim();
+            const jobState = jobParts[1].trim();
+            
+            if (userState === jobState) return 70;
+        }
+        
+        // Check for remote work
+        if (jobLoc.includes('remote') || jobLoc.includes('anywhere')) return 60;
+        
+        // Check for same country
+        const userCountry = userParts[userParts.length - 1].trim();
+        const jobCountry = jobParts[jobParts.length - 1].trim();
+        
+        if (userCountry === jobCountry) return 50;
+        
+        return 0;
+    }
+
+    calculateSimilarity(str1, str2) {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        return (longer.length - this.editDistance(longer, shorter)) / parseFloat(longer.length);
+    }
+
+    editDistance(s1, s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+        
+        const costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i === 0) {
+                    costs[j] = j;
+                } else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        }
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
     }
 
     displayJobs(jobsList, jobsData) {
@@ -227,23 +559,26 @@ class EmployerDashboard {
         const formattedDate = this.formatDate(createdAt);
         
         // Get company logo for job card - handle both company data and job-specific data
-        const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/24x24?text=LOGO';
+        const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/24x24/2563eb/ffffff?text=LOGO';
         const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
         
-        // Create job poster HTML - FIXED: Use posterUrl instead of jobImageUrl
+        // Create job poster HTML
         const jobPosterHTML = this.createJobPosterHTML(job);
+        
+        // Get applicant count for this job
+        const applicantCount = job.applicantCount || 0;
         
         return `
             <div class="job-card" data-job-id="${job.id}">
                 <div class="job-card-header">
                     <div class="job-header-content">
-                        <img src="${companyLogo}" alt="Company Logo" class="job-company-logo" onerror="this.src='https://via.placeholder.com/24x24?text=LOGO'">
+                        <img src="${companyLogo}" alt="Company Logo" class="job-company-logo" onerror="this.src='https://via.placeholder.com/24x24/2563eb/ffffff?text=LOGO'">
                         <div class="job-title-section">
                             <div class="job-title">${job.title || 'Untitled Job'}</div>
                             <div class="job-company">${companyName}</div>
                         </div>
                     </div>
-                    <div class="job-type">${this.formatJobType(job.type) || 'Full-time'}</div>
+                    <div class="job-type">${this.formatJobType(job.jobType) || 'Full-time'}</div>
                 </div>
                 
                 ${jobPosterHTML}
@@ -268,7 +603,7 @@ class EmployerDashboard {
                 <div class="job-footer">
                     <div class="job-applicants">
                         <i class="fas fa-users"></i>
-                        ${job.applications || 0} applicants
+                        ${applicantCount} applicant${applicantCount !== 1 ? 's' : ''}
                     </div>
                     <button class="view-candidates-btn" data-job-id="${job.id}">
                         View Potential Candidates
@@ -279,7 +614,6 @@ class EmployerDashboard {
     }
 
     createJobPosterHTML(job) {
-        // FIXED: Use posterUrl instead of jobImageUrl to match the job posting data structure
         const posterUrl = job.posterUrl;
         console.log('Job poster URL for job', job.id, ':', posterUrl);
         
@@ -313,153 +647,6 @@ class EmployerDashboard {
         `;
     }
 
-    showJobDetails(jobId) {
-        const job = this.jobs.find(j => j.id === jobId);
-        if (job) {
-            this.showToast(`Showing details for: ${job.title}`, 'info');
-        }
-    }
-
-    editJobPoster(jobId) {
-        this.showToast('Redirecting to edit job page...', 'info');
-        setTimeout(() => {
-            window.location.href = `job_posting.html?edit=${jobId}`;
-        }, 1000);
-    }
-
-    showJobImageModal(jobId) {
-        const job = this.jobs.find(j => j.id === jobId);
-        if (!job || !job.posterUrl) return;
-
-        const modal = document.createElement('div');
-        modal.className = 'modal job-image-modal';
-        modal.style.display = 'block';
-        
-        const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/40x40?text=LOGO';
-        const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>${job.title || 'Job Poster'}</h3>
-                    <span class="close-modal">&times;</span>
-                </div>
-                <div class="modal-body" style="padding: 0;">
-                    <img src="${job.posterUrl}" 
-                         alt="${job.title || 'Job Poster'}" 
-                         style="width: 100%; display: block;"
-                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
-                </div>
-                <div class="job-image-info" style="padding: 20px; border-top: 1px solid #f1f5f9;">
-                    <h4 style="margin: 0 0 10px 0; color: #1e293b;">${job.title || 'Untitled Job'}</h4>
-                    <div class="job-image-meta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: #64748b; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center;">
-                            <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16?text=LOGO'">
-                            <span>${companyName}</span>
-                        </div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> ${job.location || 'Remote'}</div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-money-bill-wave" style="margin-right: 5px;"></i> ${job.salary || 'Salary not specified'}</div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        const closeBtn = modal.querySelector('.close-modal');
-        closeBtn.addEventListener('click', () => {
-            document.body.removeChild(modal);
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
-            }
-        });
-    }
-
-    bindJobCardEvents() {
-        document.querySelectorAll('.job-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('view-candidates-btn') && 
-                    !e.target.classList.contains('job-poster-container') &&
-                    !e.target.classList.contains('job-poster-image') &&
-                    !e.target.classList.contains('poster-overlay') &&
-                    !e.target.classList.contains('add-poster-btn') &&
-                    !e.target.closest('.job-poster-container') &&
-                    !e.target.closest('.no-poster')) {
-                    const jobId = card.dataset.jobId;
-                    this.showJobDetails(jobId);
-                }
-            });
-        });
-        
-        document.querySelectorAll('.view-candidates-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const jobId = btn.dataset.jobId;
-                this.showPotentialCandidates(jobId);
-            });
-        });
-
-        document.querySelectorAll('.job-poster-container').forEach(container => {
-            container.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const jobId = container.dataset.jobId;
-                this.showJobImageModal(jobId);
-            });
-        });
-
-        document.querySelectorAll('.add-poster-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const jobId = btn.dataset.jobId;
-                this.editJobPoster(jobId);
-            });
-        });
-
-        document.querySelectorAll('.no-poster').forEach(noPoster => {
-            noPoster.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('add-poster-btn') && !e.target.closest('.add-poster-btn')) {
-                    e.stopPropagation();
-                    const jobId = noPoster.dataset.jobId;
-                    this.showJobDetails(jobId);
-                }
-            });
-        });
-    }
-
-    formatJobType(jobType) {
-        const types = {
-            'full-time': 'Full-time',
-            'part-time': 'Part-time',
-            'contract': 'Contract',
-            'internship': 'Internship',
-            'remote': 'Remote'
-        };
-        return types[jobType] || jobType;
-    }
-
-    formatDate(date) {
-        if (!date) return 'Recently';
-        
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-        
-        return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-    }
-
     async showPotentialCandidates(jobId) {
         const job = this.jobs.find(j => j.id === jobId);
         if (!job) return;
@@ -480,22 +667,23 @@ class EmployerDashboard {
         modal.style.display = 'block';
 
         try {
-            const seekersQuery = query(collection(db, 'users'), where('userType', '==', 'seeker'));
-            const seekersSnapshot = await getDocs(seekersQuery);
+            const db = firebase.firestore();
+            const seekersQuery = db.collection('users').where('userType', '==', 'seeker');
+            const seekersSnapshot = await seekersQuery.get();
             
             const potentialCandidates = [];
             
-            for (const seekerDoc of seekersSnapshot.docs) {
+            seekersSnapshot.forEach(seekerDoc => {
                 const seeker = { id: seekerDoc.id, ...seekerDoc.data() };
-                const matchScore = this.calculateMatchScore(job, seeker);
+                const matchScore = this.calculateAdvancedMatchScore(job, seeker);
                 
-                if (matchScore > 0.3) {
+                if (matchScore >= 50) { // 50% match threshold
                     potentialCandidates.push({
                         ...seeker,
-                        matchScore: Math.round(matchScore * 100)
+                        matchScore: matchScore
                     });
                 }
-            }
+            });
             
             potentialCandidates.sort((a, b) => b.matchScore - a.matchScore);
             
@@ -529,87 +717,6 @@ class EmployerDashboard {
         }
     }
 
-    calculateMatchScore(job, seeker) {
-        let score = 0;
-        let totalFactors = 0;
-
-        // Location match
-        if (job.location && seeker.preferredLocation) {
-            totalFactors++;
-            if (job.location.toLowerCase().includes(seeker.preferredLocation.toLowerCase()) || 
-                seeker.preferredLocation.toLowerCase().includes(job.location.toLowerCase())) {
-                score += 0.3;
-            }
-        }
-
-        // Salary match
-        if (job.salary && seeker.desiredSalary) {
-            totalFactors++;
-            const jobSalary = this.extractSalary(job.salary);
-            const desiredSalary = parseInt(seeker.desiredSalary) || 0;
-            
-            if (jobSalary && desiredSalary >= jobSalary.min && desiredSalary <= jobSalary.max) {
-                score += 0.3;
-            }
-        }
-
-        // Job type match
-        if (job.type && seeker.preferredJobType) {
-            totalFactors++;
-            if (job.type === seeker.preferredJobType) {
-                score += 0.2;
-            }
-        }
-
-        // Skills match
-        if (job.requirements && seeker.skills) {
-            totalFactors++;
-            const jobSkills = this.extractSkillsFromRequirements(job.requirements);
-            const seekerSkills = Array.isArray(seeker.skills) ? seeker.skills : [];
-            
-            const matchingSkills = jobSkills.filter(jobSkill => 
-                seekerSkills.some(seekerSkill => 
-                    seekerSkill.toLowerCase().includes(jobSkill.toLowerCase()) || 
-                    jobSkill.toLowerCase().includes(seekerSkill.toLowerCase())
-                )
-            );
-            
-            if (matchingSkills.length > 0) {
-                score += (matchingSkills.length / jobSkills.length) * 0.2;
-            }
-        }
-
-        return totalFactors > 0 ? score / totalFactors : 0;
-    }
-
-    extractSkillsFromRequirements(requirements) {
-        if (!requirements) return [];
-        
-        // Simple skill extraction - you might want to make this more sophisticated
-        const commonSkills = ['javascript', 'react', 'node', 'python', 'java', 'html', 'css', 'sql', 'mongodb', 'aws'];
-        const foundSkills = [];
-        
-        commonSkills.forEach(skill => {
-            if (requirements.toLowerCase().includes(skill)) {
-                foundSkills.push(skill);
-            }
-        });
-        
-        return foundSkills.length > 0 ? foundSkills : ['various skills'];
-    }
-
-    extractSalary(salaryString) {
-        if (!salaryString) return null;
-        
-        const numbers = salaryString.match(/\d+/g);
-        if (numbers && numbers.length >= 2) {
-            return { min: parseInt(numbers[0]), max: parseInt(numbers[1]) };
-        } else if (numbers && numbers.length === 1) {
-            return { min: parseInt(numbers[0]), max: parseInt(numbers[0]) * 1.5 };
-        }
-        return null;
-    }
-
     createCandidateCardHTML(candidate) {
         const skills = candidate.skills || [];
         const displaySkills = skills.length > 0 ? skills.slice(0, 5) : ['No skills listed'];
@@ -627,9 +734,9 @@ class EmployerDashboard {
                     ${skills.length > 5 ? `<span class="skill-tag">+${skills.length - 5} more</span>` : ''}
                 </div>
                 <div class="candidate-meta">
-                    <div><i class="fas fa-map-marker-alt"></i> ${candidate.preferredLocation || 'Not specified'}</div>
-                    <div><i class="fas fa-money-bill-wave"></i> $${candidate.desiredSalary || 'Not specified'}</div>
-                    <div><i class="fas fa-briefcase"></i> ${candidate.preferredJobType || 'Not specified'}</div>
+                    <div><i class="fas fa-map-marker-alt"></i> ${candidate.location || 'Not specified'}</div>
+                    <div><i class="fas fa-money-bill-wave"></i> ${candidate.desiredSalary || 'Not specified'}</div>
+                    <div><i class="fas fa-briefcase"></i> ${this.formatJobTypes(candidate.jobTypes) || 'Not specified'}</div>
                 </div>
                 <div class="candidate-actions">
                     <button class="btn-view-profile" data-candidate-id="${candidate.id}">
@@ -643,21 +750,41 @@ class EmployerDashboard {
         `;
     }
 
-    viewCandidateProfile(candidateId) {
-        window.open(`candidate_profile.html?id=${candidateId}`, '_blank');
+    formatJobTypes(jobTypes) {
+        if (!jobTypes) return '';
+        if (Array.isArray(jobTypes)) {
+            return jobTypes.map(type => this.formatJobType(type)).join(', ');
+        }
+        return this.formatJobType(jobTypes);
     }
 
-    contactCandidate(candidateId) {
-        this.showToast('Contact feature will be implemented soon!', 'info');
+    formatJobType(jobType) {
+        const types = {
+            'full-time': 'Full-time',
+            'part-time': 'Part-time',
+            'contract': 'Contract',
+            'remote': 'Remote',
+            'internship': 'Internship'
+        };
+        return types[jobType] || jobType;
     }
 
-    updateStats() {
-        document.getElementById('activeJobsCount').textContent = this.jobs.length;
+    formatDate(date) {
+        if (!date) return 'Recently';
         
-        const totalApplicants = this.jobs.reduce((sum, job) => sum + (job.applications || 0), 0);
-        document.getElementById('totalApplicantsCount').textContent = totalApplicants;
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        document.getElementById('potentialMatchesCount').textContent = this.potentialCandidatesCount;
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
     }
 
     bindEvents() {
@@ -719,6 +846,50 @@ class EmployerDashboard {
         });
 
         this.bindCandidateActions();
+        this.bindJobCardEvents();
+    }
+
+    bindJobCardEvents() {
+        document.querySelectorAll('.view-candidates-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const jobId = btn.dataset.jobId;
+                this.showPotentialCandidates(jobId);
+            });
+        });
+
+        document.querySelectorAll('.job-poster-container').forEach(container => {
+            container.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const jobId = container.dataset.jobId;
+                this.showJobImageModal(jobId);
+            });
+        });
+
+        document.querySelectorAll('.add-poster-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const jobId = btn.dataset.jobId;
+                this.editJobPoster(jobId);
+            });
+        });
+    }
+
+    bindCandidateActions() {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-view-profile') || e.target.closest('.btn-view-profile')) {
+                const btn = e.target.classList.contains('btn-view-profile') ? e.target : e.target.closest('.btn-view-profile');
+                const candidateId = btn.dataset.candidateId;
+                this.viewCandidateProfile(candidateId);
+            }
+            
+            if (e.target.classList.contains('btn-contact') || e.target.closest('.btn-contact')) {
+                const btn = e.target.classList.contains('btn-contact') ? e.target : e.target.closest('.btn-contact');
+                const candidateId = btn.dataset.candidateId;
+                this.contactCandidate(candidateId);
+            }
+        });
     }
 
     createMenuOverlay() {
@@ -746,32 +917,136 @@ class EmployerDashboard {
         }
     }
 
-    bindCandidateActions() {
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-view-profile') || e.target.closest('.btn-view-profile')) {
-                const btn = e.target.classList.contains('btn-view-profile') ? e.target : e.target.closest('.btn-view-profile');
-                const candidateId = btn.dataset.candidateId;
-                this.viewCandidateProfile(candidateId);
-            }
-            
-            if (e.target.classList.contains('btn-contact') || e.target.closest('.btn-contact')) {
-                const btn = e.target.classList.contains('btn-contact') ? e.target : e.target.closest('.btn-contact');
-                const candidateId = btn.dataset.candidateId;
-                this.contactCandidate(candidateId);
+    viewCandidateProfile(candidateId) {
+        window.open(`candidate_profile.html?id=${candidateId}`, '_blank');
+    }
+
+    contactCandidate(candidateId) {
+        this.showToast('Contact feature will be implemented soon!', 'info');
+    }
+
+    showJobImageModal(jobId) {
+        const job = this.jobs.find(j => j.id === jobId);
+        if (!job || !job.posterUrl) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal job-image-modal';
+        modal.style.display = 'block';
+        
+        const companyLogo = this.companyData?.logoUrl || job.companyLogo || 'https://via.placeholder.com/40x40/2563eb/ffffff?text=LOGO';
+        const companyName = job.companyName || this.companyData?.companyName || 'Your Company';
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${job.title || 'Job Poster'}</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <img src="${job.posterUrl}" 
+                         alt="${job.title || 'Job Poster'}" 
+                         style="width: 100%; display: block;"
+                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
+                </div>
+                <div class="job-image-info" style="padding: 20px; border-top: 1px solid #f1f5f9;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b;">${job.title || 'Untitled Job'}</h4>
+                    <div class="job-image-meta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: #64748b; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center;">
+                            <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16/2563eb/ffffff?text=LOGO'">
+                            <span>${companyName}</span>
+                        </div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> ${job.location || 'Remote'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-money-bill-wave" style="margin-right: 5px;"></i> ${job.salary || 'Salary not specified'}</div>
+                        <div style="display: flex; align-items: center;"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const closeBtn = modal.querySelector('.close-modal');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
             }
         });
+    }
+
+    editJobPoster(jobId) {
+        this.showToast('Redirecting to edit job page...', 'info');
+        setTimeout(() => {
+            window.location.href = `job_posting.html?edit=${jobId}`;
+        }, 1000);
+    }
+
+    updateStats() {
+        document.getElementById('activeJobsCount').textContent = this.jobs.length;
+        document.getElementById('totalApplicantsCount').textContent = this.totalApplicantsCount;
+        document.getElementById('potentialMatchesCount').textContent = this.potentialCandidatesCount;
+    }
+
+    addTouchEvents() {
+        document.querySelectorAll('.stat-card, .action-btn, .btn, .job-card').forEach(element => {
+            element.addEventListener('touchstart', () => {
+                element.classList.add('touch-active');
+            });
+
+            element.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    element.classList.remove('touch-active');
+                }, 150);
+            });
+        });
+    }
+
+    handleStatCardClick(card) {
+        this.addClickFeedback(card);
+        const statType = card.querySelector('p').textContent;
+        
+        if (statType === 'Potential Matches') {
+            this.showToast(`You have ${this.potentialCandidatesCount} potential candidates across all jobs`, 'info');
+        } else if (statType === 'Total Applicants') {
+            this.showToast(`You have ${this.totalApplicantsCount} total applicants across all jobs`, 'info');
+        } else {
+            this.showToast(`You have ${this.jobs.length} active job postings`, 'info');
+        }
+    }
+
+    handlePostJobClick() {
+        const btn = document.getElementById('postJobBtn');
+        this.addClickFeedback(btn);
+        window.location.href = 'job_posting.html';
+    }
+
+    handleCreateFirstJob() {
+        const btn = document.getElementById('createFirstJob');
+        this.addClickFeedback(btn);
+        window.location.href = 'job_posting.html';
+    }
+
+    async handleLogout() {
+        try {
+            await firebase.auth().signOut();
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Error signing out:', error);
+            this.showToast('Error signing out', 'error');
+        }
     }
 
     async handleViewAllApplicants() {
         try {
             this.showToast('Loading applicants...', 'info');
             
-            const jobsQuery = query(
-                collection(db, 'jobs'),
-                where('employerId', '==', this.currentUser.uid)
-            );
+            const db = firebase.firestore();
+            const jobsQuery = db.collection('jobs').where('employerId', '==', this.currentUser.uid);
             
-            const jobsSnapshot = await getDocs(jobsQuery);
+            const jobsSnapshot = await jobsQuery.get();
             const jobIds = jobsSnapshot.docs.map(doc => doc.id);
             
             if (jobIds.length === 0) {
@@ -781,11 +1056,8 @@ class EmployerDashboard {
             
             const applications = [];
             for (const jobId of jobIds) {
-                const applicationsQuery = query(
-                    collection(db, 'applications'),
-                    where('jobId', '==', jobId)
-                );
-                const applicationsSnapshot = await getDocs(applicationsQuery);
+                const applicationsQuery = db.collection('applications').where('jobId', '==', jobId);
+                const applicationsSnapshot = await applicationsQuery.get();
                 
                 applicationsSnapshot.forEach(doc => {
                     applications.push({ id: doc.id, ...doc.data(), jobId });
@@ -800,11 +1072,11 @@ class EmployerDashboard {
             const applicantsWithDetails = [];
             
             for (const application of applications) {
-                const jobDoc = await getDoc(doc(db, 'jobs', application.jobId));
-                const job = jobDoc.exists() ? jobDoc.data() : { title: 'Unknown Job' };
+                const jobDoc = await db.collection('jobs').doc(application.jobId).get();
+                const job = jobDoc.exists ? jobDoc.data() : { title: 'Unknown Job' };
                 
-                const seekerDoc = await getDoc(doc(db, 'users', application.seekerId));
-                const seeker = seekerDoc.exists() ? seekerDoc.data() : { fullName: 'Unknown Seeker' };
+                const seekerDoc = await db.collection('users').doc(application.seekerId).get();
+                const seeker = seekerDoc.exists ? seekerDoc.data() : { fullName: 'Unknown Seeker' };
                 
                 applicantsWithDetails.push({
                     ...application,
@@ -840,7 +1112,7 @@ class EmployerDashboard {
                             <p style="margin: 5px 0; color: #2563eb; font-weight: 500;">Applied for: ${applicant.jobTitle}</p>
                         </div>
                         <div style="color: #64748b; font-size: 0.9rem;">
-                            ${applicant.appliedAt?.toDate ? applicant.appliedAt.toDate().toLocaleDateString() : 'Unknown date'}
+                            ${applicant.appliedDate?.toDate ? applicant.appliedDate.toDate().toLocaleDateString() : 'Unknown date'}
                         </div>
                     </div>
                     
@@ -948,53 +1220,6 @@ class EmployerDashboard {
         }
     }
 
-    addTouchEvents() {
-        document.querySelectorAll('.stat-card, .action-btn, .btn, .job-card').forEach(element => {
-            element.addEventListener('touchstart', () => {
-                element.classList.add('touch-active');
-            });
-
-            element.addEventListener('touchend', () => {
-                setTimeout(() => {
-                    element.classList.remove('touch-active');
-                }, 150);
-            });
-        });
-    }
-
-    handleStatCardClick(card) {
-        this.addClickFeedback(card);
-        const statType = card.querySelector('p').textContent;
-        
-        if (statType === 'Potential Matches') {
-            this.showToast(`You have ${this.potentialCandidatesCount} potential candidates across all jobs`, 'info');
-        } else {
-            this.showToast(`No ${statType.toLowerCase()} data available yet`, 'info');
-        }
-    }
-
-    handlePostJobClick() {
-        const btn = document.getElementById('postJobBtn');
-        this.addClickFeedback(btn);
-        window.location.href = 'job_posting.html';
-    }
-
-    handleCreateFirstJob() {
-        const btn = document.getElementById('createFirstJob');
-        this.addClickFeedback(btn);
-        window.location.href = 'job_posting.html';
-    }
-
-    async handleLogout() {
-        try {
-            await signOut(auth);
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Error signing out:', error);
-            this.showToast('Error signing out', 'error');
-        }
-    }
-
     addClickFeedback(element) {
         element.classList.add('click-feedback');
         setTimeout(() => {
@@ -1026,6 +1251,10 @@ class EmployerDashboard {
                 }
             }, 300);
         }, 3000);
+    }
+
+    showError(message) {
+        this.showToast(message, 'error');
     }
 
     showNoJobsState(jobsList) {

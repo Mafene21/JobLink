@@ -180,22 +180,6 @@ body {
   }
 }
 
-/* Overlay when menu is open */
-.menu-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 98;
-  display: none;
-}
-
-.menu-overlay.active {
-  display: block;
-}
-
 /* Dashboard Container */
 .dashboard-container {
   max-width: 1400px;
@@ -741,95 +725,6 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-/* Job Poster Image */
-.job-poster-container {
-  margin: 15px 0;
-  border-radius: 8px;
-  overflow: hidden;
-  max-height: 200px;
-  background: var(--light-gray);
-  border: 1px solid var(--light-gray);
-  position: relative;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.job-poster-container:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-}
-
-.job-poster-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-  transition: var(--transition);
-}
-
-.job-poster-container:hover .job-poster-image {
-  transform: scale(1.05);
-}
-
-.poster-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: var(--transition);
-}
-
-.job-poster-container:hover .poster-overlay {
-  opacity: 1;
-}
-
-.poster-overlay i {
-  color: white;
-  font-size: 1.5rem;
-  background: rgba(0, 0, 0, 0.7);
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.no-poster {
-  text-align: center;
-  padding: 30px 20px;
-  color: var(--gray);
-  background: var(--light-gray);
-  border-radius: 8px;
-  margin: 15px 0;
-  border: 2px dashed var(--light-gray);
-  transition: var(--transition);
-}
-
-.no-poster:hover {
-  border-color: var(--primary);
-  background: rgba(52, 152, 219, 0.05);
-}
-
-.no-poster i {
-  font-size: 2.5rem;
-  margin-bottom: 15px;
-  display: block;
-  opacity: 0.5;
-}
-
-.no-poster span {
-  font-size: 0.9rem;
-  display: block;
-  margin-bottom: 10px;
 }
 
 .job-meta {
@@ -1732,47 +1627,6 @@ body {
   border-top: 1px solid var(--light);
 }
 
-/* Checkbox Styles */
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: var(--dark);
-  margin-bottom: 10px;
-}
-
-.checkbox-container input {
-  display: none;
-}
-
-.checkmark {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--gray);
-  border-radius: 4px;
-  margin-right: 10px;
-  position: relative;
-  transition: var(--transition);
-}
-
-.checkbox-container input:checked + .checkmark {
-  background-color: var(--primary);
-  border-color: var(--primary);
-}
-
-.checkbox-container input:checked + .checkmark::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
 /* Toast Notifications */
 .toast {
   position: fixed;
@@ -1917,23 +1771,6 @@ body {
 .btn-setup:hover {
   background: rgba(255, 255, 255, 0.3);
   text-decoration: none;
-}
-
-/* File Upload Note */
-.file-upload-note {
-  color: var(--gray);
-  font-size: 0.8rem;
-  margin-top: 8px;
-  font-style: italic;
-}
-
-.optional-badge {
-  background: var(--light);
-  color: var(--gray);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  margin-left: 5px;
 }
 
 /* Responsive Design */

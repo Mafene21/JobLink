@@ -431,7 +431,7 @@ body {
   white-space: nowrap;
 }
 
-/* Job Poster Styles - FIXED */
+/* Job Poster Styles */
 .job-poster-container {
   margin: 15px 0;
   border-radius: 8px;
@@ -978,55 +978,6 @@ body {
   }
 }
 
-/* Click Feedback Animation */
-@keyframes clickPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.98); }
-  100% { transform: scale(1); }
-}
-
-.click-feedback {
-  animation: clickPulse 0.3s ease;
-}
-
-.touch-active {
-  transform: scale(0.98);
-  opacity: 0.9;
-}
-
-/* Scrollbar Styling */
-.modal-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.modal-content::-webkit-scrollbar-track {
-  background: var(--light-gray);
-  border-radius: 0 15px 15px 0;
-}
-
-.modal-content::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
-}
-
-.modal-content::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-dark);
-}
-
-/* Focus States for Accessibility */
-.btn:focus,
-.action-btn:focus,
-.view-candidates-btn:focus,
-.close-modal:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.job-card:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
 /* Mobile Navigation Styles */
 @media (max-width: 768px) {
   .nav-links {
@@ -1214,113 +1165,5 @@ body {
     min-width: 250px;
     right: 10px;
     left: 10px;
-  }
-}
-
-/* Utility Classes */
-.text-center {
-  text-align: center;
-}
-
-.mb-20 {
-  margin-bottom: 20px;
-}
-
-.mt-20 {
-  margin-top: 20px;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.visible {
-  display: block !important;
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-column {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.gap-10 {
-  gap: 10px;
-}
-
-.gap-15 {
-  gap: 15px;
-}
-
-.gap-20 {
-  gap: 20px;
-}
-
-/* Print Styles */
-@media print {
-  .navbar,
-  .welcome-section .btn,
-  .quick-actions,
-  .btn-view-all {
-    display: none;
-  }
-  
-  .dashboard-container {
-    padding: 0;
-  }
-  
-  .section-card {
-    box-shadow: none;
-    border: 1px solid var(--light-gray);
-  }
-}
-
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
-  :root {
-    --primary: #0056b3;
-    --primary-dark: #004494;
-    --secondary: #000000;
-    --accent: #b30000;
-    --success: #006400;
-    --light: #f0f0f0;
-    --light-gray: #ffffff;
-    --gray: #666666;
-    --dark: #000000;
-    --white: #ffffff;
-  }
-
-  .modal {
-    background: rgba(0, 0, 0, 0.8);
-  }
-}
-
-/* Reduced Motion Support */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  .btn:hover,
-  .stat-card:hover,
-  .job-card:hover,
-  .job-poster-container:hover {
-    transform: none;
-  }
-
-  .job-card.fade-in {
-    animation: none;
   }
 }

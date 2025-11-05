@@ -1,4 +1,4 @@
-// Seeker Dashboard JavaScript with Firebase Integration
+// Seeker Dashboard JavaScript with Advanced Matching System
 class SeekerDashboard {
     constructor() {
         this.userData = null;
@@ -319,9 +319,9 @@ class SeekerDashboard {
             fullName: "Guest User",
             professionalTitle: "Update your profile",
             location: "Location not set",
-            highestEducation: "Not specified",
-            totalExperience: "Not specified",
-            skills: ["Add your skills"],
+            jobTypes: [],
+            categories: [],
+            industries: [],
             stats: { applied: 0, matches: 0 }
         };
 
@@ -466,20 +466,302 @@ class SeekerDashboard {
         this.filteredJobs = this.jobsData.map(job => {
             const companyName = this.getCompanyName(job);
             const companyLogo = this.getCompanyLogo(job);
-            const posterUrl = job.posterUrl;
-            const matchScore = this.calculateMatchScore(job);
+            const matchScore = this.calculateAdvancedMatchScore(job);
             
             return {
                 ...job,
                 company: companyName,
                 companyLogo: companyLogo,
-                posterUrl: posterUrl,
                 matchScore: matchScore
             };
-        }).filter(job => job.matchScore >= 30)
+        }).filter(job => job.matchScore >= 50) // Only show jobs with 50%+ match
           .sort((a, b) => b.matchScore - a.matchScore);
 
         this.renderStats();
+    }
+
+    calculateAdvancedMatchScore(job) {
+        if (!this.userProfile) return 0;
+
+        let score = 0;
+        let totalWeight = 0;
+
+        // Job Type Matching (25% weight)
+        if (this.userProfile.jobTypes && job.jobType) {
+            const userJobTypes = Array.isArray(this.userProfile.jobTypes) ? 
+                this.userProfile.jobTypes : [this.userProfile.jobTypes];
+            
+            if (userJobTypes.includes(job.jobType)) {
+                score += 100 * 0.25;
+            } else {
+                // Partial match for similar types
+                const similarTypes = {
+                    'full-time': ['part-time', 'contract'],
+                    'part-time': ['full-time', 'contract'],
+                    'contract': ['full-time', 'part-time'],
+                    'remote': ['full-time', 'part-time', 'contract'],
+                    'internship': ['full-time', 'part-time']
+                };
+                
+                if (similarTypes[job.jobType]) {
+                    const hasSimilar = userJobTypes.some(type => 
+                        similarTypes[job.jobType].includes(type)
+                    );
+                    if (hasSimilar) score += 50 * 0.25;
+                }
+            }
+            totalWeight += 0.25;
+        }
+
+        // Category Matching (25% weight)
+        if (this.userProfile.categories && job.category) {
+            const userCategories = Array.isArray(this.userProfile.categories) ? 
+                this.userProfile.categories : [this.userProfile.categories];
+            const jobCategories = Array.isArray(job.category) ? 
+                job.category : [job.category];
+            
+            const matchingCategories = jobCategories.filter(cat => 
+                userCategories.includes(cat)
+            );
+            
+            if (matchingCategories.length > 0) {
+                score += 100 * 0.25;
+            } else {
+                // Check for similar categories
+                const categorySimilarity = this.calculateCategorySimilarity(userCategories, jobCategories);
+                score += categorySimilarity * 0.25;
+            }
+            totalWeight += 0.25;
+        }
+
+        // Industry Matching (20% weight)
+        if (this.userProfile.industries && job.industry) {
+            const userIndustries = Array.isArray(this.userProfile.industries) ? 
+                this.userProfile.industries : [this.userProfile.industries];
+            const jobIndustries = Array.isArray(job.industry) ? 
+                job.industry : [job.industry];
+            
+            const matchingIndustries = jobIndustries.filter(ind => 
+                userIndustries.includes(ind)
+            );
+            
+            if (matchingIndustries.length > 0) {
+                score += 100 * 0.20;
+            } else {
+                // Check for similar industries
+                const industrySimilarity = this.calculateIndustrySimilarity(userIndustries, jobIndustries);
+                score += industrySimilarity * 0.20;
+            }
+            totalWeight += 0.20;
+        }
+
+        // Location Matching (20% weight)
+        if (this.userProfile.location && job.location) {
+            const locationMatch = this.calculateLocationMatch(this.userProfile.location, job.location);
+            score += locationMatch * 0.20;
+            totalWeight += 0.20;
+        }
+
+        // Skills Matching (10% weight)
+        if (this.userProfile.skills && job.requiredSkills) {
+            const userSkills = Array.isArray(this.userProfile.skills) ? 
+                this.userProfile.skills : [this.userProfile.skills];
+            const jobSkills = Array.isArray(job.requiredSkills) ? 
+                job.requiredSkills : [job.requiredSkills];
+            
+            const matchingSkills = jobSkills.filter(skill => 
+                userSkills.some(userSkill => 
+                    userSkill.toLowerCase().includes(skill.toLowerCase()) ||
+                    skill.toLowerCase().includes(userSkill.toLowerCase())
+                )
+            );
+            
+            const skillsScore = jobSkills.length > 0 ? 
+                (matchingSkills.length / jobSkills.length) * 100 : 0;
+            score += skillsScore * 0.10;
+            totalWeight += 0.10;
+        }
+
+        const normalizedScore = totalWeight > 0 ? Math.round(score / totalWeight) : 0;
+        return Math.max(0, Math.min(100, normalizedScore));
+    }
+
+    calculateCategorySimilarity(userCategories, jobCategories) {
+        // Define category groups for similarity calculation
+        const categoryGroups = {
+            'technology': ['software-development', 'web-development', 'mobile-development', 'data-science', 'ai-ml'],
+            'design': ['graphic-design', 'ui-ux-design', 'web-design', 'product-design'],
+            'business': ['marketing', 'sales', 'business-development', 'project-management'],
+            'finance': ['accounting', 'finance', 'banking', 'investment'],
+            'healthcare': ['nursing', 'medical', 'healthcare', 'pharmaceutical']
+        };
+
+        let maxSimilarity = 0;
+        
+        userCategories.forEach(userCat => {
+            jobCategories.forEach(jobCat => {
+                let similarity = 0;
+                
+                // Exact match
+                if (userCat === jobCat) {
+                    similarity = 100;
+                } else {
+                    // Check if they belong to the same group
+                    for (const group in categoryGroups) {
+                        const groupCategories = categoryGroups[group];
+                        if (groupCategories.includes(userCat) && groupCategories.includes(jobCat)) {
+                            similarity = 75;
+                            break;
+                        }
+                    }
+                    
+                    // Check for partial string match
+                    if (similarity === 0) {
+                        const userWords = userCat.toLowerCase().split(/[-_ ]/);
+                        const jobWords = jobCat.toLowerCase().split(/[-_ ]/);
+                        const commonWords = userWords.filter(word => 
+                            jobWords.some(jobWord => this.calculateSimilarity(word, jobWord) > 0.7)
+                        );
+                        
+                        if (commonWords.length > 0) {
+                            similarity = 50;
+                        }
+                    }
+                }
+                
+                maxSimilarity = Math.max(maxSimilarity, similarity);
+            });
+        });
+        
+        return maxSimilarity;
+    }
+
+    calculateIndustrySimilarity(userIndustries, jobIndustries) {
+        // Define industry groups for similarity calculation
+        const industryGroups = {
+            'technology': ['software', 'hardware', 'internet', 'telecommunications', 'it-services'],
+            'finance': ['banking', 'insurance', 'investment', 'financial-services'],
+            'healthcare': ['hospitals', 'pharmaceuticals', 'medical-devices', 'healthcare-services'],
+            'retail': ['e-commerce', 'consumer-goods', 'fashion', 'retail-services'],
+            'manufacturing': ['automotive', 'industrial', 'construction', 'energy']
+        };
+
+        let maxSimilarity = 0;
+        
+        userIndustries.forEach(userInd => {
+            jobIndustries.forEach(jobInd => {
+                let similarity = 0;
+                
+                // Exact match
+                if (userInd === jobInd) {
+                    similarity = 100;
+                } else {
+                    // Check if they belong to the same group
+                    for (const group in industryGroups) {
+                        const groupIndustries = industryGroups[group];
+                        if (groupIndustries.includes(userInd) && groupIndustries.includes(jobInd)) {
+                            similarity = 75;
+                            break;
+                        }
+                    }
+                    
+                    // Check for partial string match
+                    if (similarity === 0) {
+                        const userWords = userInd.toLowerCase().split(/[-_ ]/);
+                        const jobWords = jobInd.toLowerCase().split(/[-_ ]/);
+                        const commonWords = userWords.filter(word => 
+                            jobWords.some(jobWord => this.calculateSimilarity(word, jobWord) > 0.7)
+                        );
+                        
+                        if (commonWords.length > 0) {
+                            similarity = 50;
+                        }
+                    }
+                }
+                
+                maxSimilarity = Math.max(maxSimilarity, similarity);
+            });
+        });
+        
+        return maxSimilarity;
+    }
+
+    calculateLocationMatch(userLocation, jobLocation) {
+        if (!userLocation || !jobLocation) return 0;
+        
+        const userLoc = userLocation.toLowerCase().trim();
+        const jobLoc = jobLocation.toLowerCase().trim();
+        
+        // Exact match
+        if (userLoc === jobLoc) return 100;
+        
+        // Check for same city/state
+        const userParts = userLoc.split(',');
+        const jobParts = jobLoc.split(',');
+        
+        if (userParts.length > 0 && jobParts.length > 0) {
+            const userCity = userParts[0].trim();
+            const jobCity = jobParts[0].trim();
+            
+            if (userCity === jobCity) return 90;
+            
+            // Check for similar city names
+            if (this.calculateSimilarity(userCity, jobCity) > 0.8) return 80;
+        }
+        
+        // Check for same state
+        if (userParts.length > 1 && jobParts.length > 1) {
+            const userState = userParts[1].trim();
+            const jobState = jobParts[1].trim();
+            
+            if (userState === jobState) return 70;
+        }
+        
+        // Check for remote work
+        if (jobLoc.includes('remote') || jobLoc.includes('anywhere')) return 60;
+        
+        // Check for same country
+        const userCountry = userParts[userParts.length - 1].trim();
+        const jobCountry = jobParts[jobParts.length - 1].trim();
+        
+        if (userCountry === jobCountry) return 50;
+        
+        return 0;
+    }
+
+    calculateSimilarity(str1, str2) {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        return (longer.length - this.editDistance(longer, shorter)) / parseFloat(longer.length);
+    }
+
+    editDistance(s1, s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+        
+        const costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i === 0) {
+                    costs[j] = j;
+                } else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        }
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
     }
 
     getCompanyName(job) {
@@ -541,246 +823,38 @@ class SeekerDashboard {
         };
     }
 
-    createSocialMediaHTML(socialMedia) {
-        let html = '';
-        if (socialMedia.linkedin) {
-            html += `<a href="${socialMedia.linkedin}" target="_blank" class="social-link linkedin">
-                        <i class="fab fa-linkedin"></i>
-                    </a>`;
-        }
-        if (socialMedia.twitter) {
-            html += `<a href="${socialMedia.twitter}" target="_blank" class="social-link twitter">
-                        <i class="fab fa-twitter"></i>
-                    </a>`;
-        }
-        if (socialMedia.facebook) {
-            html += `<a href="${socialMedia.facebook}" target="_blank" class="social-link facebook">
-                        <i class="fab fa-facebook"></i>
-                    </a>`;
-        }
-        if (socialMedia.instagram) {
-            html += `<a href="${socialMedia.instagram}" target="_blank" class="social-link instagram">
-                        <i class="fab fa-instagram"></i>
-                    </a>`;
-        }
-        
-        return html ? `
-            <div class="social-media-links">
-                <h6>Follow Us</h6>
-                <div class="social-icons">
-                    ${html}
-                </div>
-            </div>
-        ` : '';
-    }
-
-    calculateMatchScore(job) {
-        if (!this.userProfile) return 0;
-
-        let score = 0;
-        let totalWeight = 0;
-
-        // Skills Match (40% weight)
-        if (this.userProfile.skills && job.requiredSkills && job.requiredSkills.length > 0) {
-            const userSkills = this.userProfile.skills.map(skill => skill.toLowerCase().trim());
-            const jobSkills = job.requiredSkills.map(skill => skill.toLowerCase().trim());
-            
-            const matchingSkills = jobSkills.filter(jobSkill => 
-                userSkills.some(userSkill => 
-                    userSkill.includes(jobSkill) || jobSkill.includes(userSkill) ||
-                    this.calculateSimilarity(userSkill, jobSkill) > 0.7
-                )
-            );
-            
-            const skillsScore = (matchingSkills.length / jobSkills.length) * 100;
-            score += skillsScore * 0.4;
-            totalWeight += 0.4;
-        }
-
-        // Experience Match (20% weight)
-        if (this.userProfile.totalExperience && job.experienceLevel) {
-            const experienceLevels = {
-                'none': 0,
-                '0-1': 1,
-                '1-3': 2,
-                '3-5': 3,
-                '5-10': 4,
-                '10+': 5
-            };
-            
-            const userExpLevel = experienceLevels[this.userProfile.totalExperience] || 0;
-            const jobExpLevel = experienceLevels[job.experienceLevel] || 0;
-            
-            let experienceScore = 0;
-            if (userExpLevel >= jobExpLevel) {
-                experienceScore = 100;
-            } else if (userExpLevel > 0) {
-                experienceScore = (userExpLevel / jobExpLevel) * 100;
-            }
-            
-            score += experienceScore * 0.2;
-            totalWeight += 0.2;
-        }
-
-        // Education Match (15% weight)
-        if (this.userProfile.highestEducation && job.educationLevel) {
-            const educationLevels = {
-                'high_school': 1,
-                'certificate': 2,
-                'diploma': 3,
-                'associate': 4,
-                'bachelor': 5,
-                'master': 6,
-                'phd': 7
-            };
-            
-            const userEduLevel = educationLevels[this.userProfile.highestEducation] || 0;
-            const jobEduLevel = educationLevels[job.educationLevel] || 0;
-            
-            let educationScore = 0;
-            if (userEduLevel >= jobEduLevel) {
-                educationScore = 100;
-            } else if (userEduLevel > 0) {
-                educationScore = (userEduLevel / jobEduLevel) * 100;
-            }
-            
-            score += educationScore * 0.15;
-            totalWeight += 0.15;
-        }
-
-        // Job Type Preference (10% weight)
-        if (this.userProfile.jobTypes && job.jobType) {
-            const preferredTypes = this.userProfile.jobTypes || [];
-            if (preferredTypes.includes(job.jobType)) {
-                score += 100 * 0.1;
-            }
-            totalWeight += 0.1;
-        }
-
-        // Location Match (10% weight)
-        if (this.userProfile.location && job.location) {
-            const userLocation = this.userProfile.location.toLowerCase();
-            const jobLocation = job.location.toLowerCase();
-            
-            if (userLocation.includes(jobLocation) || jobLocation.includes(userLocation)) {
-                score += 100 * 0.1;
-            } else {
-                const userWords = userLocation.split(/[,\s]+/);
-                const jobWords = jobLocation.split(/[,\s]+/);
-                const commonWords = userWords.filter(word => 
-                    jobWords.some(jobWord => this.calculateSimilarity(word, jobWord) > 0.8)
-                );
-                
-                if (commonWords.length > 0) {
-                    score += (commonWords.length / Math.max(userWords.length, jobWords.length)) * 100 * 0.1;
-                }
-            }
-            totalWeight += 0.1;
-        }
-
-        // Salary Expectations (5% weight)
-        if (this.userProfile.desiredSalary && job.salary) {
-            const userSalaryRange = this.parseSalary(this.userProfile.desiredSalary);
-            const jobSalaryRange = this.parseSalary(job.salary);
-            
-            if (userSalaryRange && jobSalaryRange) {
-                const salaryOverlap = this.calculateSalaryOverlap(userSalaryRange, jobSalaryRange);
-                score += salaryOverlap * 0.05;
-            }
-            totalWeight += 0.05;
-        }
-
-        const normalizedScore = totalWeight > 0 ? Math.round(score / totalWeight) : 0;
-        return Math.max(0, Math.min(100, normalizedScore));
-    }
-
-    calculateSimilarity(str1, str2) {
-        const longer = str1.length > str2.length ? str1 : str2;
-        const shorter = str1.length > str2.length ? str2 : str1;
-        
-        if (longer.length === 0) return 1.0;
-        
-        return (longer.length - this.editDistance(longer, shorter)) / parseFloat(longer.length);
-    }
-
-    editDistance(s1, s2) {
-        s1 = s1.toLowerCase();
-        s2 = s2.toLowerCase();
-        
-        const costs = [];
-        for (let i = 0; i <= s1.length; i++) {
-            let lastValue = i;
-            for (let j = 0; j <= s2.length; j++) {
-                if (i === 0) {
-                    costs[j] = j;
-                } else {
-                    if (j > 0) {
-                        let newValue = costs[j - 1];
-                        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                        }
-                        costs[j - 1] = lastValue;
-                        lastValue = newValue;
-                    }
-                }
-            }
-            if (i > 0) costs[s2.length] = lastValue;
-        }
-        return costs[s2.length];
-    }
-
-    parseSalary(salaryString) {
-        if (!salaryString) return null;
-        
-        const numbers = salaryString.match(/\d+/g);
-        if (!numbers || numbers.length < 2) return null;
-        
-        const min = parseInt(numbers[0]) * (salaryString.toLowerCase().includes('k') ? 1000 : 1);
-        const max = parseInt(numbers[1]) * (salaryString.toLowerCase().includes('k') ? 1000 : 1);
-        
-        return { min, max };
-    }
-
-    calculateSalaryOverlap(userRange, jobRange) {
-        const overlapMin = Math.max(userRange.min, jobRange.min);
-        const overlapMax = Math.min(userRange.max, jobRange.max);
-        
-        if (overlapMin > overlapMax) return 0;
-        
-        const overlapLength = overlapMax - overlapMin;
-        const userRangeLength = userRange.max - userRange.min;
-        
-        return (overlapLength / userRangeLength) * 100;
-    }
-
     renderUserProfile() {
         if (!this.userProfile) return;
 
         const userName = document.getElementById('userName');
         const userTitle = document.getElementById('userTitle');
         const userLocation = document.getElementById('userLocation');
-        const userEducation = document.getElementById('userEducation');
-        const userExperience = document.getElementById('userExperience');
-        const skillsContainer = document.getElementById('userSkills');
+        const userJobTypes = document.getElementById('userJobTypes');
+        const userCategories = document.getElementById('userCategories');
+        const userIndustries = document.getElementById('userIndustries');
+        const userLocationPref = document.getElementById('userLocationPref');
         const userAvatar = document.getElementById('userAvatar');
 
         if (userName) userName.textContent = this.userProfile.fullName || 'Guest User';
         if (userTitle) userTitle.textContent = this.userProfile.professionalTitle || 'Update your profile';
         if (userLocation) userLocation.textContent = this.userProfile.location || 'Location not set';
         
-        if (userEducation) userEducation.textContent = this.getEducationLabel(this.userProfile.highestEducation);
-        if (userExperience) userExperience.textContent = this.getExperienceLabel(this.userProfile.totalExperience);
-        
-        if (skillsContainer) {
-            if (this.userProfile.skills && this.userProfile.skills.length > 0) {
-                skillsContainer.innerHTML = this.userProfile.skills
-                    .slice(0, 5)
-                    .map(skill => `<span class="skill-tag">${skill}</span>`)
-                    .join('');
-            } else {
-                skillsContainer.innerHTML = '<span class="skill-tag">No skills added</span>';
-            }
+        if (userJobTypes) {
+            const jobTypes = Array.isArray(this.userProfile.jobTypes) ? this.userProfile.jobTypes : [this.userProfile.jobTypes];
+            userJobTypes.textContent = jobTypes.filter(Boolean).join(', ') || 'Not specified';
         }
+        
+        if (userCategories) {
+            const categories = Array.isArray(this.userProfile.categories) ? this.userProfile.categories : [this.userProfile.categories];
+            userCategories.textContent = categories.filter(Boolean).join(', ') || 'Not specified';
+        }
+        
+        if (userIndustries) {
+            const industries = Array.isArray(this.userProfile.industries) ? this.userProfile.industries : [this.userProfile.industries];
+            userIndustries.textContent = industries.filter(Boolean).join(', ') || 'Not specified';
+        }
+        
+        if (userLocationPref) userLocationPref.textContent = this.userProfile.location || 'Not specified';
 
         if (userAvatar && this.userProfile.profilePicture) {
             userAvatar.src = this.userProfile.profilePicture;
@@ -823,7 +897,7 @@ class SeekerDashboard {
                         <i class="fas fa-search"></i>
                     </div>
                     <h3>No matching jobs found</h3>
-                    <p>We couldn't find any jobs that match your current profile. Try updating your skills or preferences.</p>
+                    <p>We couldn't find any jobs that match your current preferences. Try updating your profile or preferences.</p>
                     <div class="empty-actions">
                         <a href="seeker_edit_profile.html" class="btn-primary">Update Your Profile</a>
                         <a href="browse_jobs.html" class="btn-secondary">Browse All Jobs</a>
@@ -834,8 +908,6 @@ class SeekerDashboard {
             jobsFeed.innerHTML = this.filteredJobs.map(job => {
                 const companyName = this.getCompanyName(job);
                 const companyLogo = this.getCompanyLogo(job);
-                const posterUrl = job.posterUrl;
-                const jobPosterHTML = this.createJobPosterHTML(job);
                 
                 return `
                 <div class="job-card" data-job-id="${job.id}">
@@ -864,12 +936,11 @@ class SeekerDashboard {
                         </div>
                     </div>
                     
-                    ${jobPosterHTML}
-                    
                     <div class="job-meta">
                         <span class="job-type">${this.getJobTypeLabel(job.jobType)}</span>
                         <span class="job-salary">${job.salary || 'Salary not specified'}</span>
-                        <span class="job-experience">${this.getExperienceLabel(job.experienceLevel)}</span>
+                        <span class="job-category">${this.formatCategory(job.category)}</span>
+                        <span class="job-industry">${this.formatIndustry(job.industry)}</span>
                     </div>
                     <p class="job-description">${job.description ? job.description.substring(0, 150) + '...' : 'No description available'}</p>
                     <div class="job-skills">
@@ -881,7 +952,7 @@ class SeekerDashboard {
                         }
                     </div>
                     <div class="job-match-breakdown">
-                        <small>Match based on: Skills, Experience, Location, Salary</small>
+                        <small>Match based on: Job Type, Category, Industry, Location, Skills</small>
                     </div>
                     <div class="job-actions">
                         <button class="btn-apply" onclick="dashboard.showApplicationModal('${job.id}')">
@@ -905,87 +976,6 @@ class SeekerDashboard {
         if (matchCount) {
             matchCount.textContent = `${this.filteredJobs.length} matches found`;
         }
-    }
-
-    createJobPosterHTML(job) {
-        const posterUrl = job.posterUrl;
-        
-        if (posterUrl && posterUrl.trim() !== '' && posterUrl !== 'https://via.placeholder.com/150x150?text=Job+Image') {
-            return `
-                <div class="job-poster-container" data-job-id="${job.id}" onclick="dashboard.showJobImageModal('${job.id}')">
-                    <img src="${posterUrl}" 
-                         alt="${job.title || 'Job Poster'}" 
-                         class="job-poster-image"
-                         onerror="this.onerror=null; this.parentElement.outerHTML=window.dashboard.createNoPosterHTML('${job.id}');">
-                    <div class="poster-overlay">
-                        <i class="fas fa-search-plus"></i>
-                    </div>
-                </div>
-            `;
-        } else {
-            return this.createNoPosterHTML(job.id);
-        }
-    }
-
-    createNoPosterHTML(jobId) {
-        return `
-            <div class="no-poster" data-job-id="${jobId}">
-                <i class="fas fa-image"></i>
-                <span>No job poster image</span>
-            </div>
-        `;
-    }
-
-    showJobImageModal(jobId) {
-        const job = this.jobsData.find(j => j.id === jobId);
-        if (!job || !job.posterUrl) return;
-
-        const modal = document.createElement('div');
-        modal.className = 'modal job-image-modal';
-        modal.style.display = 'block';
-        
-        const companyName = this.getCompanyName(job);
-        const companyLogo = this.getCompanyLogo(job);
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>${job.title || 'Job Poster'}</h3>
-                    <span class="modal-close">&times;</span>
-                </div>
-                <div class="modal-body" style="padding: 0;">
-                    <img src="${job.posterUrl}" 
-                         alt="${job.title || 'Job Poster'}" 
-                         style="width: 100%; display: block;"
-                         onerror="this.parentElement.innerHTML='<div style=\\'padding: 40px; text-align: center; color: #64748b;\\'><i class=\\'fas fa-exclamation-triangle\\' style=\\'font-size: 3rem; margin-bottom: 15px;\\'></i><h4>Image Failed to Load</h4><p>The job poster image could not be loaded.</p></div>'">
-                </div>
-                <div class="job-image-info" style="padding: 20px; border-top: 1px solid #f1f5f9;">
-                    <h4 style="margin: 0 0 10px 0; color: #1e293b;">${job.title || 'Untitled Job'}</h4>
-                    <div class="job-image-meta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: #64748b; font-size: 0.9rem;">
-                        <div style="display: flex; align-items: center;">
-                            <img src="${companyLogo}" alt="Company Logo" style="width: 16px; height: 16px; border-radius: 3px; margin-right: 5px;" onerror="this.src='https://via.placeholder.com/16x16?text=LOGO'">
-                            <span>${companyName}</span>
-                        </div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> ${job.location || 'Remote'}</div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-money-bill-wave" style="margin-right: 5px;"></i> ${job.salary || 'Salary not specified'}</div>
-                        <div style="display: flex; align-items: center;"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${this.formatDate(job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || new Date()))}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        const closeBtn = modal.querySelector('.modal-close');
-        closeBtn.addEventListener('click', () => {
-            document.body.removeChild(modal);
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
-            }
-        });
     }
 
     renderApplications() {
@@ -1028,7 +1018,7 @@ class SeekerDashboard {
         let completion = 0;
         const fields = [
             'fullName', 'professionalTitle', 'email', 'location', 
-            'highestEducation', 'totalExperience', 'currentStatus', 'skills'
+            'jobTypes', 'categories', 'industries', 'skills'
         ];
 
         fields.forEach(field => {
@@ -1076,9 +1066,8 @@ class SeekerDashboard {
                 ...job,
                 company: this.getCompanyName(job),
                 companyLogo: this.getCompanyLogo(job),
-                posterUrl: job.posterUrl,
-                matchScore: this.calculateMatchScore(job)
-            })).filter(job => job.matchScore >= 30)];
+                matchScore: this.calculateAdvancedMatchScore(job)
+            })).filter(job => job.matchScore >= 50)];
         } else {
             const term = searchTerm.toLowerCase();
             this.filteredJobs = this.jobsData
@@ -1086,14 +1075,15 @@ class SeekerDashboard {
                     ...job,
                     company: this.getCompanyName(job),
                     companyLogo: this.getCompanyLogo(job),
-                    posterUrl: job.posterUrl,
-                    matchScore: this.calculateMatchScore(job)
+                    matchScore: this.calculateAdvancedMatchScore(job)
                 }))
                 .filter(job => 
-                    job.matchScore >= 30 &&
+                    job.matchScore >= 50 &&
                     (job.title?.toLowerCase().includes(term) ||
                      job.company?.toLowerCase().includes(term) ||
                      job.description?.toLowerCase().includes(term) ||
+                     job.category?.toString().toLowerCase().includes(term) ||
+                     job.industry?.toString().toLowerCase().includes(term) ||
                      (job.requiredSkills && job.requiredSkills.some(skill => 
                          skill.toLowerCase().includes(term)))
                     )
@@ -1108,19 +1098,17 @@ class SeekerDashboard {
                 ...job,
                 company: this.getCompanyName(job),
                 companyLogo: this.getCompanyLogo(job),
-                posterUrl: job.posterUrl,
-                matchScore: this.calculateMatchScore(job)
-            })).filter(job => job.matchScore >= 30)];
+                matchScore: this.calculateAdvancedMatchScore(job)
+            })).filter(job => job.matchScore >= 50)];
         } else {
             this.filteredJobs = this.jobsData
                 .map(job => ({
                     ...job,
                     company: this.getCompanyName(job),
                     companyLogo: this.getCompanyLogo(job),
-                    posterUrl: job.posterUrl,
-                    matchScore: this.calculateMatchScore(job)
+                    matchScore: this.calculateAdvancedMatchScore(job)
                 }))
-                .filter(job => job.matchScore >= 30 && job.jobType === filterType);
+                .filter(job => job.matchScore >= 50 && job.jobType === filterType);
         }
         this.renderJobsFeed();
     }
@@ -1186,12 +1174,12 @@ class SeekerDashboard {
                         <span>${job.salary || 'Salary not specified'}</span>
                     </div>
                     <div class="job-detail-item">
-                        <i class="fas fa-briefcase"></i>
-                        <span>${this.getExperienceLabel(job.experienceLevel)}</span>
+                        <i class="fas fa-tags"></i>
+                        <span>${this.formatCategory(job.category)}</span>
                     </div>
                     <div class="job-detail-item">
-                        <i class="fas fa-graduation-cap"></i>
-                        <span>${this.getEducationLabel(job.educationLevel)}</span>
+                        <i class="fas fa-industry"></i>
+                        <span>${this.formatIndustry(job.industry)}</span>
                     </div>
                 </div>
 
@@ -1249,7 +1237,6 @@ class SeekerDashboard {
         if (jobDetailsModal) jobDetailsModal.classList.remove('show');
     }
 
-    // EMPLOYER DETAILS MODAL - FIXED AND WORKING
     showEmployerDetails(jobId) {
         const job = this.jobsData.find(j => j.id === jobId);
         if (!job) {
@@ -1265,14 +1252,9 @@ class SeekerDashboard {
         const companyLogo = this.getCompanyLogo(job);
         const contactInfo = this.getEmployerContactInfo(job);
 
-        console.log('Employer data for job:', jobId, job.employerData);
-        console.log('Contact info:', contactInfo);
-
         if (employerTitle) employerTitle.textContent = companyName;
         
         if (employerContent) {
-            const socialMediaHTML = this.createSocialMediaHTML(contactInfo.socialMedia);
-            
             employerContent.innerHTML = `
                 <div class="employer-header">
                     <div class="employer-logo-large">
@@ -1330,8 +1312,6 @@ class SeekerDashboard {
                     <h5>About ${companyName}</h5>
                     <p>${contactInfo.description}</p>
                 </div>
-
-                ${socialMediaHTML}
 
                 <div class="employer-actions">
                     <button class="btn btn-primary" onclick="dashboard.showApplicationModal('${job.id}')">
@@ -1492,32 +1472,6 @@ class SeekerDashboard {
         }
     }
 
-    getEducationLabel(education) {
-        const educationLabels = {
-            'high_school': 'High School',
-            'certificate': 'Certificate',
-            'diploma': 'Diploma',
-            'associate': 'Associate Degree',
-            'bachelor': "Bachelor's Degree",
-            'master': "Master's Degree",
-            'phd': 'PhD',
-            'other': 'Other'
-        };
-        return educationLabels[education] || 'Not specified';
-    }
-
-    getExperienceLabel(experience) {
-        const experienceLabels = {
-            'none': 'No experience',
-            '0-1': '0-1 years',
-            '1-3': '1-3 years',
-            '3-5': '3-5 years',
-            '5-10': '5-10 years',
-            '10+': '10+ years'
-        };
-        return experienceLabels[experience] || 'Not specified';
-    }
-
     getJobTypeLabel(jobType) {
         const jobTypeLabels = {
             'full-time': 'Full-time',
@@ -1529,6 +1483,25 @@ class SeekerDashboard {
         return jobTypeLabels[jobType] || jobType;
     }
 
+    formatCategory(category) {
+        if (Array.isArray(category)) {
+            return category.map(cat => this.capitalizeFirstLetter(cat)).join(', ');
+        }
+        return this.capitalizeFirstLetter(category) || 'Not specified';
+    }
+
+    formatIndustry(industry) {
+        if (Array.isArray(industry)) {
+            return industry.map(ind => this.capitalizeFirstLetter(ind)).join(', ');
+        }
+        return this.capitalizeFirstLetter(industry) || 'Not specified';
+    }
+
+    capitalizeFirstLetter(string) {
+        if (!string) return '';
+        return string.charAt(0).toUpperCase() + string.slice(1).replace(/-/g, ' ');
+    }
+
     getStatusLabel(status) {
         const statusLabels = {
             'pending': 'Pending',
@@ -1537,24 +1510,6 @@ class SeekerDashboard {
             'rejected': 'Not Selected'
         };
         return statusLabels[status] || 'Pending';
-    }
-
-    formatDate(date) {
-        if (!date) return 'Recently';
-        
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-        
-        return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-        });
     }
 
     showJobsLoading() {
