@@ -1,4 +1,4 @@
-// Seeker Edit Profile JavaScript with EmailJS Integration
+// Seeker Edit Profile JavaScript
 class SeekerEditProfile {
     constructor() {
         this.currentSection = 'personal';
@@ -8,22 +8,12 @@ class SeekerEditProfile {
         this.defaultAvatar = 'https://i.pravatar.cc/100?img=5';
         this.firebaseInitialized = false;
         this.currentUser = null;
-        this.emailjsInitialized = false;
-        
-        // EmailJS Configuration - Replace with your actual EmailJS credentials
-        this.emailjsConfig = {
-            serviceId: 'service_didffk9',
-            templateId: 'template_prh4ahk',
-            publicKey: 'nqCrFjqulRmHkn8bN'
-        };
-        
         this.init();
     }
 
     async init() {
         await this.initializeFirebase();
         await this.initializeAuth();
-        await this.initializeEmailJS();
         this.bindEvents();
         await this.loadUserData();
         this.updateProgress();
@@ -31,6 +21,7 @@ class SeekerEditProfile {
     }
 
     initializeFirebase() {
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCNXjUFXeeVhyHMBuhBiMv-YYcVrBdCRS8",
             authDomain: "joblink-babb6.firebaseapp.com",
@@ -42,6 +33,7 @@ class SeekerEditProfile {
         };
 
         try {
+            // Check if Firebase is already initialized
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
             }
@@ -63,44 +55,11 @@ class SeekerEditProfile {
                     resolve();
                 } else {
                     console.log("No user authenticated - using local storage");
+                    // Don't redirect, just continue with local storage
                     resolve();
                 }
             });
         });
-    }
-
-    async initializeEmailJS() {
-        try {
-            if (typeof emailjs === 'undefined') {
-                console.warn("EmailJS SDK not loaded");
-                this.emailjsInitialized = false;
-                return;
-            }
-
-            if (this.emailjsConfig.publicKey && this.emailjsConfig.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
-                emailjs.init(this.emailjsConfig.publicKey);
-                this.emailjsInitialized = true;
-                console.log("EmailJS initialized successfully");
-                
-                // Test EmailJS connection
-                await this.testEmailJSConnection();
-            } else {
-                console.warn("EmailJS not configured - please update emailjsConfig with your credentials");
-                this.emailjsInitialized = false;
-            }
-        } catch (error) {
-            console.error("EmailJS initialization error:", error);
-            this.emailjsInitialized = false;
-        }
-    }
-
-    async testEmailJSConnection() {
-        try {
-            // Simple test to verify EmailJS is working
-            console.log("Testing EmailJS connection...");
-        } catch (error) {
-            console.error("EmailJS test failed:", error);
-        }
     }
 
     async loadUserData() {
@@ -108,6 +67,7 @@ class SeekerEditProfile {
             if (this.firebaseInitialized && this.currentUser) {
                 await this.loadUserDataFromFirebase();
             } else {
+                // Load from localStorage or use empty data
                 this.loadUserDataFromLocalStorage();
             }
         } catch (error) {
@@ -126,9 +86,12 @@ class SeekerEditProfile {
             this.userSkills = userData.skills || [];
             this.referees = userData.referees || [];
             
+            // Update profile picture in dashboard
             this.updateDashboardProfilePicture(userData.profilePicture);
+            
             console.log('User data loaded from Firebase:', userData);
         } else {
+            // Initialize empty data for new user
             this.initializeEmptyData();
         }
 
@@ -138,7 +101,9 @@ class SeekerEditProfile {
     }
 
     updateDashboardProfilePicture(profilePicture) {
+        // Update profile picture in dashboard if it exists
         if (profilePicture) {
+            // Store in localStorage for dashboard to access
             localStorage.setItem('userProfilePicture', profilePicture);
         }
     }
@@ -374,6 +339,7 @@ class SeekerEditProfile {
     }
 
     switchSection(section) {
+        // Update navigation
         document.querySelectorAll('.nav-section').forEach(btn => {
             btn.classList.remove('active');
         });
@@ -383,6 +349,7 @@ class SeekerEditProfile {
             targetButton.classList.add('active');
         }
 
+        // Update form sections
         document.querySelectorAll('.form-section').forEach(sectionEl => {
             sectionEl.classList.remove('active');
         });
@@ -405,7 +372,9 @@ class SeekerEditProfile {
                 if (avatarPreview) avatarPreview.src = e.target.result;
                 if (previewAvatar) previewAvatar.src = e.target.result;
 
+                // Store the profile picture data
                 this.formData.profilePicture = e.target.result;
+                
                 this.showToast('Profile picture updated successfully', 'success');
             };
             reader.readAsDataURL(file);
@@ -419,7 +388,9 @@ class SeekerEditProfile {
         if (avatarPreview) avatarPreview.src = this.defaultAvatar;
         if (previewAvatar) previewAvatar.src = this.defaultAvatar;
 
+        // Remove profile picture data
         this.formData.profilePicture = this.defaultAvatar;
+        
         this.showToast('Profile picture removed successfully', 'success');
     }
 
@@ -477,6 +448,7 @@ class SeekerEditProfile {
             skillsCount.textContent = this.userSkills.length;
         }
         
+        // Update preview with skills count
         const previewSkills = document.getElementById('previewSkills');
         if (previewSkills) {
             previewSkills.textContent = this.userSkills.length;
@@ -523,7 +495,7 @@ class SeekerEditProfile {
         this.clearRefereeForm();
         this.updateProgress();
         
-        // Send email to referee using EmailJS
+        // Send email to referee (if Firebase is available)
         this.sendRefereeEmail(referee);
     }
 
@@ -586,6 +558,7 @@ class SeekerEditProfile {
             refereesCount.textContent = this.referees.length;
         }
         
+        // Update preview with referees count
         const previewReferees = document.getElementById('previewReferees');
         if (previewReferees) {
             previewReferees.textContent = this.referees.length;
@@ -613,99 +586,30 @@ class SeekerEditProfile {
         });
     }
 
-    async sendRefereeEmail(referee) {
-        // Show loading modal
-        this.showEmailStatusModal();
+   async sendRefereeEmail(referee) {
+  try {
+    await emailjs.send(
+      "service_0d488se", // 🔹 your Service ID
+      "template_pfejqbd", // 🔹 your Template ID
+      {
+        to_name: referee.name,
+        from_name: this.formData.fullName || "Job Mart Applicant",
+        website_link: "https://mafene21.github.io/Joblink/" // 🔹 optional site link
+      },
+      {
+        publicKey: "f_gQvnsE7xygSHyBE" // 🔹 your Public Key
+      }
+    );
 
-        try {
-            if (!this.emailjsInitialized) {
-                throw new Error('EmailJS not configured');
-            }
+    this.showRefereeEmailModal(referee.email);
+    this.showToast(`Reference request sent to ${referee.email}`, "success");
 
-            // Get user information
-            const userFullName = document.getElementById('fullName')?.value || 'Job Seeker';
-            const userEmail = document.getElementById('email')?.value || 'user@example.com';
-            
-            // Prepare email template parameters
-            const templateParams = {
-                to_name: referee.name,
-                to_email: referee.email, // This should send to the referee's email
-                user_name: userFullName,
-                user_email: userEmail,
-                referee_name: referee.name,
-                referee_email: referee.email,
-                relationship: this.getRelationshipLabel(referee.relationship),
-                position: referee.position || 'Not specified',
-                company: referee.company || 'Not specified',
-                notes: referee.notes || 'No additional notes provided',
-                request_date: new Date().toLocaleDateString(),
-                joblink_url: window.location.origin,
-                reply_to: userEmail // So referee can reply directly to the user
-            };
+  } catch (error) {
+    console.error("Error sending email:", error);
+    this.showToast("Failed to send referee email. Please try again later.", "error");
+  }
+}
 
-            console.log('Sending email with parameters:', templateParams);
-
-            // Send email using EmailJS
-            const response = await emailjs.send(
-                this.emailjsConfig.serviceId,
-                this.emailjsConfig.templateId,
-                templateParams
-            );
-
-            // Hide loading modal
-            this.hideEmailStatusModal();
-
-            if (response.status === 200) {
-                console.log('Referee email sent successfully:', response);
-                this.showRefereeEmailModal(referee.email);
-                this.showToast('Reference request sent successfully to ' + referee.email, 'success');
-                
-                // Update referee status
-                referee.emailSent = true;
-                referee.emailSentDate = new Date().toISOString();
-            } else {
-                throw new Error(`EmailJS returned status: ${response.status}`);
-            }
-
-        } catch (error) {
-            // Hide loading modal
-            this.hideEmailStatusModal();
-            
-            console.error('Error sending referee email:', error);
-            
-            let errorMessage = 'Failed to send email to referee. ';
-            
-            if (error.text) {
-                // EmailJS specific error
-                if (error.text.includes('Invalid template ID')) {
-                    errorMessage += 'Invalid email template configuration.';
-                } else if (error.text.includes('Invalid service ID')) {
-                    errorMessage += 'Invalid email service configuration.';
-                } else {
-                    errorMessage += error.text;
-                }
-            } else if (error.message) {
-                errorMessage += error.message;
-            }
-            
-            this.showToast(errorMessage, 'error');
-            this.showToast('Referee added locally. Please check your EmailJS configuration.', 'warning');
-        }
-    }
-
-    showEmailStatusModal() {
-        const emailStatusModal = document.getElementById('emailStatusModal');
-        if (emailStatusModal) {
-            emailStatusModal.classList.add('show');
-        }
-    }
-
-    hideEmailStatusModal() {
-        const emailStatusModal = document.getElementById('emailStatusModal');
-        if (emailStatusModal) {
-            emailStatusModal.classList.remove('show');
-        }
-    }
 
     showRefereeEmailModal(email) {
         const refereeEmailSent = document.getElementById('refereeEmailSent');
@@ -721,6 +625,7 @@ class SeekerEditProfile {
     }
 
     populateForm() {
+        // Populate form fields with loaded data
         Object.keys(this.formData).forEach(key => {
             const element = document.getElementById(key);
             if (element) {
@@ -732,18 +637,21 @@ class SeekerEditProfile {
             }
         });
 
+        // Handle job types checkboxes
         if (this.formData.jobTypes && Array.isArray(this.formData.jobTypes)) {
             document.querySelectorAll('input[name="jobType"]').forEach(checkbox => {
                 checkbox.checked = this.formData.jobTypes.includes(checkbox.value);
             });
         }
 
+        // Update character count
         const summary = document.getElementById('professionalSummary');
         const summaryChars = document.getElementById('summaryChars');
         if (summary && summaryChars) {
             summaryChars.textContent = summary.value.length;
         }
 
+        // Set profile pictures
         const avatarPreview = document.getElementById('avatarPreview');
         const previewAvatar = document.getElementById('previewAvatar');
         if (avatarPreview && this.formData.profilePicture) {
@@ -753,12 +661,14 @@ class SeekerEditProfile {
             previewAvatar.src = this.formData.profilePicture;
         }
 
+        // Enable graduation year if institution is filled
         if (this.formData.institution) {
             this.toggleGraduationYear(true);
         }
     }
 
     updatePreview() {
+        // Update preview card with current form data
         const name = document.getElementById('fullName')?.value || 'Your Name';
         const title = document.getElementById('professionalTitle')?.value || 'Your Title';
         const location = document.getElementById('location')?.value || 'Location';
@@ -771,11 +681,13 @@ class SeekerEditProfile {
         if (previewTitle) previewTitle.textContent = title;
         if (previewLocation) previewLocation.textContent = location;
 
+        // Update skills count in preview
         const previewSkills = document.getElementById('previewSkills');
         if (previewSkills) {
             previewSkills.textContent = this.userSkills.length;
         }
         
+        // Update referees count in preview
         const previewReferees = document.getElementById('previewReferees');
         if (previewReferees) {
             previewReferees.textContent = this.referees.length;
@@ -795,22 +707,28 @@ class SeekerEditProfile {
         let score = 0;
         const maxScore = 100;
 
+        // Personal info (25%)
         if (document.getElementById('fullName')?.value) score += 10;
         if (document.getElementById('professionalTitle')?.value) score += 10;
         if (document.getElementById('location')?.value) score += 5;
 
+        // Education (15%)
         if (document.getElementById('highestEducation')?.value) score += 10;
         if (document.getElementById('fieldOfStudy')?.value) score += 5;
 
+        // Experience (15%)
         if (document.getElementById('totalExperience')?.value) score += 10;
         if (document.getElementById('currentStatus')?.value) score += 5;
 
+        // Skills (15%)
         if (this.userSkills.length >= 3) score += 10;
         if (this.userSkills.length >= 5) score += 5;
 
+        // Referees (15%)
         if (this.referees.length >= 1) score += 10;
         if (this.referees.length >= 2) score += 5;
 
+        // Preferences (15%)
         const jobTypesChecked = document.querySelectorAll('input[name="jobType"]:checked').length;
         if (jobTypesChecked > 0) score += 10;
         if (document.getElementById('desiredSalary')?.value) score += 5;
@@ -858,7 +776,10 @@ class SeekerEditProfile {
 
         try {
             const formData = this.collectFormData();
+            
+            // Save to Firebase or localStorage
             await this.saveProfileData(formData);
+            
             this.showSuccessModal();
         } catch (error) {
             console.error('Error updating profile:', error);
@@ -898,6 +819,7 @@ class SeekerEditProfile {
 
     saveProfileToLocalStorage(formData) {
         localStorage.setItem('profileDraft', JSON.stringify(formData));
+        // Also store profile picture separately for dashboard access
         if (formData.profilePicture) {
             localStorage.setItem('userProfilePicture', formData.profilePicture);
         }
@@ -925,8 +847,10 @@ class SeekerEditProfile {
     }
 
     showToast(message, type = 'info') {
+        // Remove existing toasts
         document.querySelectorAll('.toast').forEach(toast => toast.remove());
 
+        // Create toast element
         const toast = document.createElement('div');
         toast.className = `toast ${type === 'error' ? 'toast-error' : type === 'success' ? 'toast-success' : type === 'warning' ? 'toast-warning' : ''}`;
         toast.innerHTML = `
@@ -938,6 +862,7 @@ class SeekerEditProfile {
         
         document.body.appendChild(toast);
 
+        // Remove toast after 3 seconds
         setTimeout(() => {
             toast.style.animation = 'slideOutRight 0.3s ease';
             setTimeout(() => {

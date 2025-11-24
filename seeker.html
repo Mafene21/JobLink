@@ -12,9 +12,13 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  
-  <!-- EmailJS SDK -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  (function(){
+    emailjs.init("f_gQvnsE7xygSHyBE"); // Replace with your actual EmailJS public key
+  })();
+</script>
+
 </head>
 <body>
   <!-- Navigation -->
@@ -562,22 +566,6 @@
         </div>
         <div class="modal-actions">
           <button class="btn btn-primary" id="closeEmailModal">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Email Sending Status Modal -->
-  <div class="modal" id="emailStatusModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Sending Reference Request</h3>
-      </div>
-      <div class="modal-body">
-        <div class="email-status">
-          <div class="loader"></div>
-          <h4>Please wait...</h4>
-          <p>Sending email to referee. This may take a few moments.</p>
         </div>
       </div>
     </div>

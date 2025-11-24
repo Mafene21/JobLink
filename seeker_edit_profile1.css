@@ -1076,6 +1076,22 @@ body {
   justify-content: center;
 }
 
+/* Email Status Modal */
+#emailStatusModal .modal-content {
+  max-width: 400px;
+}
+
+#emailStatusModal .email-status {
+  padding: 20px 0;
+}
+
+#emailStatusModal .loader {
+  width: 40px;
+  height: 40px;
+  border-top: 3px solid var(--primary);
+  margin: 0 auto 20px;
+}
+
 /* Toast Notifications */
 .toast {
   position: fixed;
@@ -1092,6 +1108,10 @@ body {
 
 .toast-error {
   background: var(--accent);
+}
+
+.toast-warning {
+  background: var(--warning);
 }
 
 .toast-content {
