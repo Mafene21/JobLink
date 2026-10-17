@@ -2,6 +2,8 @@
 
 A recruitment website built with HTML, CSS, JavaScript, and Supabase. Job seekers can manage profiles and applications; employers can publish jobs and review candidates.
 
+Website: [joblink-pied.vercel.app](https://joblink-pied.vercel.app).
+
 ## Run locally
 
 ```sh

@@ -25,6 +25,7 @@
 - Added persistent, retryable loading errors so connection failures are not presented as an empty catalog.
 - Configured the corrected Supabase Project URL and verified the publishable key, authentication settings, public jobs table, and aggregate statistics against the live project.
 - Checked the homepage and both public job search pages with live Supabase responses; all loaded successfully without browser errors.
+- Published the Supabase migration and UI changes to GitHub and Vercel. Added static hosting configuration that serves only `public/`, preserves `.html` addresses, and supplies response security headers. The public production address is `https://joblink-pied.vercel.app`.
 
 ## UI and interaction refresh
 

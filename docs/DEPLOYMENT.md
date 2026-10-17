@@ -2,6 +2,8 @@
 
 The GitHub repository is `Mafene21/JobLink`. Its production branch is `main`, and it is connected to the Vercel project `joblink` in `mafene21-5969`.
 
+Public production website: **https://joblink-pied.vercel.app**. Generated deployment addresses may require a Vercel login; use the public address to test JobLink.
+
 ## Project settings
 
 Keep the Vercel Root Directory at the repository root. The checked-in `vercel.json` selects the Other framework preset, skips installation and building, and publishes only `public/`. The browser dependencies are already included in that folder.
@@ -14,9 +16,9 @@ Pushing a commit to `main` triggers the existing Vercel Git integration. Check t
 
 After confirming the production website address, open Supabase **Authentication → URL Configuration**:
 
-- Set Site URL to the production website origin, starting with `https://`.
-- Add the production `https://YOUR-DOMAIN/auth.html` to the redirect allowlist.
-- Add `https://YOUR-DOMAIN/forgot_password.html?mode=reset` for password recovery.
+- Set Site URL to `https://joblink-pied.vercel.app`.
+- Add `https://joblink-pied.vercel.app/auth.html` to the redirect allowlist.
+- Add `https://joblink-pied.vercel.app/forgot_password.html?mode=reset` for password recovery.
 - Keep the localhost redirects if you still use local development.
 
 In Google Cloud, add the production website origin to the OAuth client's authorized JavaScript origins. Keep the authorized redirect URI as `https://uzmmgcomtmhsclxetrle.supabase.co/auth/v1/callback`; Google returns to Supabase first, which then returns to JobLink.
