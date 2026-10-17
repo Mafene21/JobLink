@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Job details | JobLink</title>
+<meta name="description" content="Find jobs across Uganda, build your profile, and connect with employers on JobLink.">
+<link rel="stylesheet" href="assets/css/shared.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="assets/css/design.css">
+<script type="module" src="assets/js/lib/site.js">
+</script>
+<script type="module" src="assets/js/pages/job.js">
+</script>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<header class="site-header">
+<nav class="site-nav" aria-label="Main navigation" data-site-nav>
+<a class="site-brand" href="index.html">
+<i class="fas fa-handshake" aria-hidden="true">
+</i>JobLink</a>
+<button class="site-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="siteLinks">
+<i class="fas fa-bars" aria-hidden="true">
+</i>
+</button>
+<ul class="site-links" id="siteLinks">
+<li>
+<a href="jobs.html">Find jobs</a>
+</li>
+<li>
+<a href="register.html?type=employer">For employers</a>
+</li>
+<li>
+<a href="about.html">About</a>
+</li>
+<li data-account-nav>
+<a href="login.html">Sign in</a>
+</li>
+<li data-guest-register>
+<a class="button" href="register.html">Create account</a>
+</li>
+</ul>
+</nav>
+</header>
+<main id="main-content" class="page-shell">
+<nav class="job-breadcrumb" aria-label="Breadcrumb">
+<a id="backToResults" href="jobs.html">&larr; Back to jobs</a>
+</nav>
+<div id="jobContent" aria-live="polite">
+<div class="state-card">
+<p>Loading job details...</p>
+</div>
+</div>
+</main>
+<div class="modal design-modal" id="applicationModal" aria-labelledby="applicationTitle">
+<div class="modal-content">
+<div class="modal-header">
+<h2 id="applicationTitle">Apply for this job</h2>
+<button class="modal-close" type="button" id="closeApplication" aria-label="Close application">&times;</button>
+</div>
+<form class="modal-body" id="applicationForm">
+<p id="applicationIntro">
+</p>
+<label class="form-field" for="applicationMessage">Introduce yourself <span>(optional)</span>
+<textarea id="applicationMessage" rows="4" maxlength="6000" placeholder="Tell the employer why this role interests you.">
+</textarea>
+</label>
+<label class="form-field" for="resumeUpload">Attach a resume <span>(optional)</span>
+<input id="resumeUpload" type="file" accept=".pdf,.doc,.docx">
+<small>PDF, DOC, or DOCX. Up to 5 MB. Without a resume, the employer can review your JobLink profile.</small>
+</label>
+<p id="applicationError" class="inline-error" role="alert">
+</p>
+<div class="dialog-actions">
+<button class="button secondary" type="button" id="cancelApplication">Cancel</button>
+<button class="button" type="submit" id="submitApplication">Submit application</button>
+</div>
+</form>
+</div>
+</div>
+<footer class="site-footer">
+<div class="page-shell">
+<p>&copy; <span data-year>2026</span> JobLink. Connecting talent with opportunity.</p>
+<div>
+<a href="help_support.html">Help</a>
+<a href="help_support.html#contact">Contact</a>
+<a href="about.html">About us</a>
+</div>
+</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Find jobs | JobLink</title>
+<meta name="description" content="Find jobs across Uganda, build your profile, and connect with employers on JobLink.">
+<link rel="stylesheet" href="assets/css/shared.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="assets/css/design.css">
+<script type="module" src="assets/js/lib/site.js">
+</script>
+<script type="module" src="assets/js/pages/jobs.js">
+</script>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<header class="site-header">
+<nav class="site-nav" aria-label="Main navigation" data-site-nav>
+<a class="site-brand" href="index.html">
+<i class="fas fa-handshake" aria-hidden="true">
+</i>JobLink</a>
+<button class="site-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="siteLinks">
+<i class="fas fa-bars" aria-hidden="true">
+</i>
+</button>
+<ul class="site-links" id="siteLinks">
+<li>
+<a href="jobs.html">Find jobs</a>
+</li>
+<li>
+<a href="register.html?type=employer">For employers</a>
+</li>
+<li>
+<a href="about.html">About</a>
+</li>
+<li data-account-nav>
+<a href="login.html">Sign in</a>
+</li>
+<li data-guest-register>
+<a class="button" href="register.html">Create account</a>
+</li>
+</ul>
+</nav>
+</header>
+<main id="main-content" class="page-shell">
+<header class="catalog-heading">
+<p class="eyebrow">A new chapter starts with a search</p>
+<h1>Find your next job</h1>
+<p>Explore opportunities that suit your skills and your life.</p>
+</header>
+<div class="catalog-layout">
+<aside class="catalog-filters" id="filtersPanel" aria-label="Filter jobs">
+<div class="filter-top">
+<h2>Filter jobs</h2>
+<button type="button" class="text-button" id="resetFilters">Clear all</button>
+</div>
+<label for="locationFilter">Location</label>
+<input id="locationFilter" type="text" placeholder="e.g. Kampala or remote">
+<label for="jobTypeFilter">Job type</label>
+<select id="jobTypeFilter">
+<option value="">Any type</option>
+<option value="full-time">Full-time</option>
+<option value="part-time">Part-time</option>
+<option value="contract">Contract</option>
+<option value="internship">Internship</option>
+<option value="remote">Remote</option>
+<option value="freelance">Freelance</option>
+</select>
+<label for="categoryFilter">Field</label>
+<select id="categoryFilter">
+<option value="">Any field</option>
+<option value="technology">Technology</option>
+<option value="healthcare">Healthcare</option>
+<option value="finance">Finance</option>
+<option value="business">Business</option>
+<option value="education">Education</option>
+<option value="engineering">Engineering</option>
+<option value="creative">Creative</option>
+<option value="other">Other</option>
+</select>
+<label for="experienceFilter">Experience</label>
+<select id="experienceFilter">
+<option value="">Any experience</option>
+<option value="entry">Entry level</option>
+<option value="mid">Mid level</option>
+<option value="senior">Senior level</option>
+</select>
+<label for="salaryFilter">Monthly salary (UGX)</label>
+<select id="salaryFilter">
+<option value="">Any salary</option>
+<option value="0-500k">Up to 500,000</option>
+<option value="500k-1M">500,000 - 1 million</option>
+<option value="1M-2M">1 - 2 million</option>
+<option value="2M+">Over 2 million</option>
+</select>
+<button type="button" class="button secondary wide" id="closeFilters">Show results</button>
+</aside>
+<section aria-label="Job results">
+<div class="catalog-toolbar">
+<form id="catalogSearch" role="search">
+<label class="sr-only" for="jobSearch">Search jobs</label>
+<input id="jobSearch" name="q" placeholder="Job title, skill, or company">
+<button type="submit" class="button" id="searchBtn">Search</button>
+</form>
+</div>
+<div class="mobile-filter-row">
+<button type="button" class="button secondary mobile-filters-button" id="toggleFilters" aria-expanded="false" aria-controls="filtersPanel">
+<i class="fas fa-sliders-h" aria-hidden="true">
+</i> Filters <span id="filterCount">
+</span>
+</button>
+<button type="button" class="text-button" id="setupAlerts">Save this search</button>
+</div>
+<div class="filter-chips" id="filterChips">
+</div>
+<div class="result-summary">
+<span id="jobsCount" role="status" aria-live="polite">Loading jobs...</span>
+<label for="sortBy">Sort by <select id="sortBy">
+<option value="newest">Newest first</option>
+<option value="oldest">Oldest first</option>
+<option value="salary-high">Salary: high to low</option>
+<option value="salary-low">Salary: low to high</option>
+</select>
+</label>
+</div>
+<div class="vacancy-list" id="jobsList" aria-busy="true">
+</div>
+<div class="catalog-more">
+<button class="button secondary" type="button" id="loadMoreJobs" hidden>Show more jobs</button>
+</div>
+</section>
+</div>
+</main>
+<div class="modal design-modal" id="alertsModal" aria-labelledby="savedSearchTitle">
+<div class="modal-content">
+<div class="modal-header">
+<h2 id="savedSearchTitle">Save this search</h2>
+<button class="modal-close" type="button" id="closeAlertsModal" aria-label="Close saved search">&times;</button>
+</div>
+<form class="modal-body" id="savedSearchForm">
+<p>Keep these filters in this browser for your next visit. This does not send email notifications.</p>
+<label class="form-field" for="alertKeywords">Keywords<input id="alertKeywords" placeholder="Job title or skills">
+</label>
+<label class="form-field" for="alertLocation">Location<input id="alertLocation" placeholder="Any location">
+</label>
+<label class="form-field" for="alertJobType">Job type<select id="alertJobType">
+<option value="">Any type</option>
+<option value="full-time">Full-time</option>
+<option value="part-time">Part-time</option>
+<option value="contract">Contract</option>
+<option value="internship">Internship</option>
+<option value="remote">Remote</option>
+<option value="freelance">Freelance</option>
+</select>
+</label>
+<p id="savedSearchError" class="inline-error" role="alert">
+</p>
+<div class="dialog-actions">
+<button class="button secondary" type="button" id="cancelAlert">Cancel</button>
+<button class="button" type="submit" id="saveAlert">Save search</button>
+</div>
+</form>
+</div>
+</div>
+<footer class="site-footer">
+<div class="page-shell">
+<p>&copy; <span data-year>2026</span> JobLink. Connecting talent with opportunity.</p>
+<div>
+<a href="help_support.html">Help</a>
+<a href="help_support.html#contact">Contact</a>
+<a href="about.html">About us</a>
+</div>
+</div>
+</footer>
+</body>
+</html>

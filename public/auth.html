@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="stylesheet" href="assets/css/shared.css">
+  <script type="module" src="assets/js/lib/site.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finish Sign-in | JobLink</title>
+  <link rel="stylesheet" href="assets/css/pages/login.css">
+  <script type="module" src="assets/js/pages/auth.js"></script>
+  <link rel="stylesheet" href="assets/css/design.css">
+</head>
+<body>
+  <main class="login-section"><div class="login-container"><div class="login-card">
+    <h1>Welcome to JobLink</h1>
+    <p id="authStatus" role="status">Checking your account…</p>
+    <p id="authIdentity" hidden></p>
+    <p id="authError" class="inline-error" role="alert"></p>
+    <form id="googleAccountForm" hidden>
+      <fieldset class="role-choice"><legend>I want to</legend><div class="role-options">
+        <label class="role-option"><input type="radio" name="accountType" value="seeker" required> Find a job</label>
+        <label class="role-option"><input type="radio" name="accountType" value="employer" required> Hire people</label>
+      </div></fieldset>
+      <button class="button wide" type="submit" id="completeGoogleAccount">Continue</button>
+    </form>
+    <p><a href="login.html">Back to sign in</a></p>
+  </div></div></main>
+</body>
+</html>

@@ -1,0 +1,11 @@
+:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+[hidden] { display: none !important; }
+button:disabled { cursor: not-allowed; opacity: .6; }
+button.hamburger { border: 0; background: transparent; color: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.notice { padding: 1rem; margin: 1rem 0; border-radius: .5rem; background: #eff6ff; color: #1e3a8a; }
+.empty-help { padding: 1rem; color: #475569; }
+.joblink-toast { position: fixed; right: 1rem; bottom: 1rem; z-index: 10000; max-width: min(28rem,calc(100vw - 2rem)); padding: 1rem 1.25rem; border-radius: .75rem; background: #1e293b; color: white; box-shadow: 0 8px 24px #0f172a33; }
+.candidate-summary { padding: 1.5rem; line-height: 1.65; }
+.candidate-summary h2, .candidate-summary h3 { margin: .75rem 0; }
+.mission-stat .stat-number { font-size: 1.5rem; overflow-wrap: anywhere; }
